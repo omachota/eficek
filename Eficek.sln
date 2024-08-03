@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek", "Eficek\Eficek.csproj", "{C955C007-3A52-4A81-8614-5043FF158F00}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek.Gtfs", "Eficek.Gtfs\Eficek.Gtfs.csproj", "{62348630-F7C7-422B-A424-8618B3B5FBA0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C955C007-3A52-4A81-8614-5043FF158F00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C955C007-3A52-4A81-8614-5043FF158F00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C955C007-3A52-4A81-8614-5043FF158F00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C955C007-3A52-4A81-8614-5043FF158F00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62348630-F7C7-422B-A424-8618B3B5FBA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62348630-F7C7-422B-A424-8618B3B5FBA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62348630-F7C7-422B-A424-8618B3B5FBA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62348630-F7C7-422B-A424-8618B3B5FBA0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

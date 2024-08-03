@@ -1,0 +1,11 @@
+@Eficek_HostAddress = http://localhost:5217
+
+GET {{Eficek_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{Eficek_HostAddress}}/todos/1
+Accept: application/json
+
+###
