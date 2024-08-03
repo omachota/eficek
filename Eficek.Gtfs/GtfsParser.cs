@@ -14,17 +14,16 @@ public class GtfsParser
 {
 	private readonly GtfsDescription _description;
 	protected readonly ILogger _logger;
-	protected static readonly string _gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
 
-	protected GtfsParser(GtfsDescription description, ILogger logger)
+	public GtfsParser(GtfsDescription description, ILogger logger)
 	{
 		_description = description;
 		_logger = logger;
 	}
 
-	private static List<T> Parse<T>(string filePath) where T : IFromRow<T>
+	public List<T> Parse<T>(string filePath) where T : IFromRow<T>
 	{
-		var path = Path.Combine(_gtfsCoreDirectory, filePath);
+		var path = Path.Combine(_description.FullGtfsDirectory, filePath);
 		using var reader = Sep.New(',').Reader().FromFile(path);
 		var data = new List<T>();
 		foreach (var row in reader)
@@ -43,5 +42,10 @@ public class GtfsParser
 	protected List<Stop> ParseStops()
 	{
 		return Parse<Stop>(_description.Stops);
+	}
+
+	public FeedInfo ParseFeedInfo()
+	{
+		return Parse<FeedInfo>(_description.FeedInfo)[0];
 	}
 }

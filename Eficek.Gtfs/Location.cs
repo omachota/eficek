@@ -3,12 +3,12 @@ namespace Eficek.Gtfs;
 public struct Coordinate
 {
 	public double Latitude;
-	public double Longtitude;
+	public double Longitude;
 
-	public Coordinate(double latitude, double longtitude)
+	public Coordinate(double latitude, double longitude)
 	{
 		Latitude = latitude;
-		Longtitude = longtitude;
+		Longitude = longitude;
 	}
 
 	public double ManhattanDistanceFrom(Coordinate other)

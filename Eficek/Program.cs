@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Eficek.Gtfs;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -18,14 +19,22 @@ var sampleTodos = new Todo[]
 	new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
 };
 
-var todosApi = app.MapGroup("/todos");
+var todosApi = app.MapGroup("/api");
 todosApi.MapGet("/", () => sampleTodos);
-todosApi.MapGet("/{id}", (int id) =>
+todosApi.MapGet("/{id:int}", (int id) =>
 	sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
 		? Results.Ok(todo)
 		: Results.NotFound());
 
-app.Run();
+
+var gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+Directory.CreateDirectory(gtfsCoreDirectory);
+
+var prahaGtfs = new PragueGtfs(app.Logger, app.Configuration, gtfsCoreDirectory);
+await prahaGtfs.Download(); // wait for the first download
+
+
+// app.Run();
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 

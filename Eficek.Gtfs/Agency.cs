@@ -4,7 +4,8 @@ namespace Eficek.Gtfs;
 
 public class Agency : IFromRow<Agency>
 {
-	public Agency(string agencyId, string agencyName, string agencyUrl, string agencyTimezone, string agencyLang, string agencyPhone)
+	public Agency(string agencyId, string agencyName, string agencyUrl, string agencyTimezone, string agencyLang,
+	              string agencyPhone)
 	{
 		AgencyId = agencyId;
 		AgencyName = agencyName;
