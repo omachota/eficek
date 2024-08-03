@@ -1,6 +1,6 @@
 @Eficek_HostAddress = http://localhost:5217
 
-GET {{Eficek_HostAddress}}/todos/
+GET {{Eficek_HostAddress}}/api/admin/test
 Accept: application/json
 
 ###

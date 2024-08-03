@@ -31,6 +31,10 @@ public class PragueGtfs
 		}
 	}
 
+	/// <summary>
+	/// Downloads Gtfs data if feed_start_date from feed_info.txt is not today or feed_info.txt doesn't exist
+	/// </summary>
+	/// <param name="force"></param>
 	public async ValueTask Download(bool force = false)
 	{
 		if (File.Exists(Path.Combine(_gtfsDescription.FullGtfsDirectory, _gtfsDescription.FeedInfo)) && !force)
@@ -45,13 +49,12 @@ public class PragueGtfs
 			}
 		}
 
-		
 		// Clear before downloading
 		foreach (var file in Directory.EnumerateFiles(_gtfsDescription.FullGtfsDirectory))
 		{
 			File.Delete(file);
 		}
-		
+
 		using var client = new HttpClient();
 		var stream = await client.GetStreamAsync(_gtfsConfiguration.Url);
 
@@ -59,7 +62,7 @@ public class PragueGtfs
 		DecompressGtfs(stream, _gtfsDescription.FullGtfsDirectory);
 		_logger.LogInformation("Prague gtfs data downloaded successfully");
 	}
-	
+
 	private void DecompressGtfs(Stream stream, string outputDirectory)
 	{
 		try
