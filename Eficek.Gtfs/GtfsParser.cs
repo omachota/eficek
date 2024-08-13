@@ -10,22 +10,18 @@ namespace Eficek.Gtfs;
 /// Every gtfs location might have its own parser (done be inheriting from this call, so it should be abstract...). In location classes,
 /// we should override file names.
 /// </summary>
-public class GtfsParser
+public class GtfsParser(GtfsDescription description, ILogger logger)
 {
-	private readonly GtfsDescription _description;
-	protected readonly ILogger _logger;
-
-	public GtfsParser(GtfsDescription description, ILogger logger)
-	{
-		_description = description;
-		_logger = logger;
-	}
+	protected readonly ILogger _logger = logger;
 
 	public List<T> Parse<T>(string filePath) where T : IFromRow<T>
 	{
-		var path = Path.Combine(_description.FullGtfsDirectory, filePath);
+		var path = Path.Combine(description.FullGtfsDirectory, filePath);
 		using var reader = Sep.New(',').Reader().FromFile(path);
 		var data = new List<T>();
+		var x = Sep.New(',').Reader().From(new MemoryStream(new byte[32]));
+		x.
+		
 		foreach (var row in reader)
 		{
 			data.Add(T.FromRow(row));
@@ -36,16 +32,16 @@ public class GtfsParser
 
 	protected List<Agency> ParseAgencies()
 	{
-		return Parse<Agency>(_description.Agency);
+		return Parse<Agency>(description.Agency);
 	}
 
 	protected List<Stop> ParseStops()
 	{
-		return Parse<Stop>(_description.Stops);
+		return Parse<Stop>(description.Stops);
 	}
 
 	public FeedInfo ParseFeedInfo()
 	{
-		return Parse<FeedInfo>(_description.FeedInfo)[0];
+		return Parse<FeedInfo>(description.FeedInfo)[0];
 	}
 }

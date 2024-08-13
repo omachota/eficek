@@ -2,25 +2,21 @@ using nietras.SeparatedValues;
 
 namespace Eficek.Gtfs;
 
-public class Agency : IFromRow<Agency>
+public class Agency(
+	string agencyId,
+	string agencyName,
+	string agencyUrl,
+	string agencyTimezone,
+	string agencyLang,
+	string agencyPhone)
+	: IFromRow<Agency>
 {
-	public Agency(string agencyId, string agencyName, string agencyUrl, string agencyTimezone, string agencyLang,
-	              string agencyPhone)
-	{
-		AgencyId = agencyId;
-		AgencyName = agencyName;
-		AgencyUrl = agencyUrl;
-		AgencyTimezone = agencyTimezone;
-		AgencyLang = agencyLang;
-		AgencyPhone = agencyPhone;
-	}
-
-	public string AgencyId;
-	public string AgencyName;
-	public string AgencyUrl;
-	public string AgencyTimezone;
-	public string AgencyLang;
-	public string AgencyPhone;
+	public string AgencyId = agencyId;
+	public string AgencyName = agencyName;
+	public string AgencyUrl = agencyUrl;
+	public string AgencyTimezone = agencyTimezone;
+	public string AgencyLang = agencyLang;
+	public string AgencyPhone = agencyPhone;
 
 	public static Agency FromRow(SepReader.Row row)
 	{

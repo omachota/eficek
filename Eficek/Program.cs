@@ -1,32 +1,30 @@
-using System.Text.Json.Serialization;
 using Eficek.Gtfs;
+using Eficek.Services;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-	options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
-});
+// Add services to the container.
+
+builder.Services.AddSingleton<NetworkService>();
+
 builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-var sampleTodos = new Todo[]
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
 {
-	new(1, "Walk the dog"),
-	new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-	new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-	new(4, "Clean the bathroom"),
-	new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-};
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
 
-// var todosApi = app.MapGroup("/api");
-// todosApi.MapGet("/", () => sampleTodos);
-// todosApi.MapGet("/test", () => "test");
-// todosApi.MapGet("/{id:int}", (int id) =>
-// 	sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-// 		? Results.Ok(todo)
-// 		: Results.NotFound());
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
 app.MapControllers();
 
 var gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
@@ -35,12 +33,4 @@ Directory.CreateDirectory(gtfsCoreDirectory);
 var pragueGtfs = new PragueGtfs(app.Logger, app.Configuration, gtfsCoreDirectory);
 await pragueGtfs.Download(); // wait for the first download
 
-
 app.Run();
-
-public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-[JsonSerializable(typeof(Todo[]))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
-}

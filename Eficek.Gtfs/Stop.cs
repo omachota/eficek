@@ -1,47 +1,43 @@
+using CoordinateSharp;
 using nietras.SeparatedValues;
 
 namespace Eficek.Gtfs;
 
-public class Stop : IFromRow<Stop>
+public class Stop(
+	string stopId,
+	string stopName,
+	Coordinate coordinate,
+	string zoneId,
+	string stopUrl,
+	LocationType locationType,
+	string parentStation,
+	int wheelchairBoarding,
+	string levelId,
+	string platformCode,
+	string aswNodeId,
+	string aswStopId,
+	int zoneRegionType)
+	: IFromRow<Stop>
 {
-	public Stop(string stopId, string stopName, Coordinate coordinate, string zoneId, string stopUrl,
-	            LocationType locationType, string parentStation, int wheelchairBoarding, string levelId,
-	            string platformCode, string aswNodeId, string aswStopId, int zoneRegionType)
-	{
-		StopId = stopId;
-		StopName = stopName;
-		Coordinate = coordinate;
-		ZoneId = zoneId;
-		StopUrl = stopUrl;
-		LocationType = locationType;
-		ParentStation = parentStation;
-		WheelchairBoarding = wheelchairBoarding;
-		LevelId = levelId;
-		PlatformCode = platformCode;
-		AswNodeId = aswNodeId;
-		AswStopId = aswStopId;
-		ZoneRegionType = zoneRegionType;
-	}
+	public string StopId = stopId;
+	public string StopName = stopName;
 
-	public string StopId;
-	public string StopName;
-
-	public Coordinate Coordinate;
+	public Coordinate Coordinate = coordinate;
 
 	// This has to be a string since `P`, `B`, `2,3` and so
-	public string ZoneId;
-	public string StopUrl;
-	public LocationType LocationType;
-	public string ParentStation;
-	public int WheelchairBoarding;
-	public string LevelId;
-	public string PlatformCode;
-	public string AswNodeId;
+	public string ZoneId = zoneId;
+	public string StopUrl = stopUrl;
+	public LocationType LocationType = locationType;
+	public string ParentStation = parentStation;
+	public int WheelchairBoarding = wheelchairBoarding;
+	public string LevelId = levelId;
+	public string PlatformCode = platformCode;
+	public string AswNodeId = aswNodeId;
 
-	public string AswStopId;
+	public string AswStopId = aswStopId;
 
 	// We can ignore for now
-	public int ZoneRegionType;
+	public int ZoneRegionType = zoneRegionType;
 
 	public static Stop FromRow(SepReader.Row row)
 	{

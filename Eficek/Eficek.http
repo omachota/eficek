@@ -1,11 +1,6 @@
-@Eficek_HostAddress = http://localhost:5217
+@Eficek_HostAddress = http://localhost:5179
 
-GET {{Eficek_HostAddress}}/api/admin/test
-Accept: application/json
-
-###
-
-GET {{Eficek_HostAddress}}/todos/1
+GET {{Eficek_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
