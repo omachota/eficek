@@ -2,21 +2,14 @@ using nietras.SeparatedValues;
 
 namespace Eficek.Gtfs;
 
-public class Route : IFromRow<Route>
+public class Route(string routeId, string agencyId, string routeShortName, int routeType)
+	: IFromRow<Route>
 {
-	public string RouteId;
-	public string AgencyId;
-	public string RouteShortName;
-	public int RouteType;
+	public string RouteId = routeId;
+	public string AgencyId = agencyId;
+	public string RouteShortName = routeShortName;
+	public int RouteType = routeType;
 
-
-	public Route(string routeId, string agencyId, string routeShortName, int routeType)
-	{
-		RouteId = routeId;
-		AgencyId = agencyId;
-		RouteShortName = routeShortName;
-		RouteType = routeType;
-	}
 
 	public static Route FromRow(SepReader.Row row)
 	{
