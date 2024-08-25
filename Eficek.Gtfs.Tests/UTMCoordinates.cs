@@ -2,11 +2,12 @@ namespace Eficek.Gtfs.Tests;
 
 public class UTMCoordinates
 {
-	[Theory]
+	[Fact]
 	public void Test()
 	{
-		var coords = new Coordinate[3];
-		var res = UTMCoordinateBuilder.Generate(coords);
+		var coord = new Coordinate(50.0875, 14.4213889);
+		var utm = new UtmCoordinate[3];
+		var res = UtmCoordinateBuilder.Convert(coord);
 		
 	}
 }

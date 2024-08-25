@@ -22,7 +22,7 @@ public class Stop(
 	public string StopName = stopName;
 
 	public Coordinate Coordinate = coordinate;
-	public UTMCoordinate UTM;
+	public UtmCoordinate UTM;
 
 	// This has to be a string since `P`, `B`, `2,3` and so
 	public string ZoneId = zoneId;

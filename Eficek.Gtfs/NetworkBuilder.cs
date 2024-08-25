@@ -89,6 +89,15 @@ public class NetworkBuilder(string path)
 			logger.LogError(e, "Failed to parse gtfs data");
 			throw;
 		}
+		
+		var coords = stopsTask.Result.Values.Select(x => x.Coordinate).ToArray();
+		var utm = new UtmCoordinate[coords.Length];
+		UtmCoordinateBuilder.Convert(coords, utm, 33);
+
+		for (int i = 0; i < 10; i++)
+		{
+			logger.LogInformation("{} {}; {} {}",coords[i].Latitude, coords[i].Longitude, utm[i].Northing, utm[i].Easting);
+		}
 
 		stopwatch.Stop();
 
@@ -126,25 +135,25 @@ public class NetworkBuilder(string path)
 		return dict;
 	}
 
-	private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(IList<StopGroup> stopGroups)
-	{
-		var dict = new Dictionary<(int, int), List<StopGroup>>();
-		for (var i = 0; i < stopGroups.Count; i++)
-		{
-			// Since the whole Czech republic is in 33U, we don't have to care about UTM rectangles
-			var utm = stopGroups[i].Coordinate.UTM;
-			var eSq = (int)(utm.Easting / SquareSize);
-			var nSq = (int)(utm.Northing / SquareSize);
-			if (dict.TryGetValue((eSq, nSq), out var nearbyStopGroups))
-			{
-				nearbyStopGroups.Add(stopGroups[i]);
-			}
-			else
-			{
-				dict[(eSq, nSq)] = [stopGroups[i]];
-			}
-		}
-
-		return dict;
-	}
+	// private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(IList<StopGroup> stopGroups)
+	// {
+	// 	var dict = new Dictionary<(int, int), List<StopGroup>>();
+	// 	for (var i = 0; i < stopGroups.Count; i++)
+	// 	{
+	// 		// Since the whole Czech republic is in 33U, we don't have to care about UTM rectangles
+	// 		var utm = stopGroups[i].Coordinate.UTM;
+	// 		var eSq = (int)(utm.Easting / SquareSize);
+	// 		var nSq = (int)(utm.Northing / SquareSize);
+	// 		if (dict.TryGetValue((eSq, nSq), out var nearbyStopGroups))
+	// 		{
+	// 			nearbyStopGroups.Add(stopGroups[i]);
+	// 		}
+	// 		else
+	// 		{
+	// 			dict[(eSq, nSq)] = [stopGroups[i]];
+	// 		}
+	// 	}
+	//
+	// 	return dict;
+	// }
 }

@@ -1,66 +1,64 @@
-using NumSharp;
+using System.Runtime.InteropServices;
 
 namespace Eficek.Gtfs;
 
-public struct UTMCoordinate
+[StructLayout(LayoutKind.Sequential)]
+public struct UtmCoordinate
 {
 	public double Northing;
 	public double Easting;
 	public int ZoneNumber; // Max 60
-	public int LatitudeBand; // Max 22?
 }
 
-public static class UTMCoordinateBuilder
+public static partial class UtmCoordinateBuilder
 {
-	public static UTMCoordinate[] Generate(IReadOnlyList<Coordinate> coordinates)
+	// Rider suggestion, otherwise use [DllImport] with Cdecl CallConvention
+	[LibraryImport("libumt_convert.so", SetLastError = false)]
+	[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+	private static unsafe partial void ConvertArrayUnsafe(Coordinate* ptr_coord, UtmCoordinate* ptr_utm, UIntPtr length,
+	                                                      UIntPtr zone);
+
+	[LibraryImport("libumt_convert.so", SetLastError = false)]
+	[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+	private static unsafe partial UtmCoordinate ConvertUnsafe(Coordinate coordinate, UIntPtr zone);
+
+	private static int DetermineZone(Coordinate coordinate)
 	{
-		var deconstructedCoords = new double[coordinates.Count][];
-		for (var i = 0; i < coordinates.Count; i++)
-		{
-			deconstructedCoords[i] = [coordinates[i].Latitude, coordinates[i].Longitude]; // TODO : pad 0, 0
-		}
-
-		var utm = GenerateInternal(np.array(deconstructedCoords));
-
-		var utmConstructed = new UTMCoordinate[utm.shape[0]];
-		for (var i = 0; i < utm.shape[0]; i++)
-		{
-			utmConstructed[i] = new UTMCoordinate { ZoneNumber = utm[i, 3], LatitudeBand = utm[i, 4] };
-		}
-
-		return utmConstructed;
+		return (int)((coordinate.Longitude + 180) / 6) + 1;
 	}
 
-	private static NDArray GenerateInternal(NDArray coordinates)
+	/// <summary>
+	/// Convert WGS84 coordinates to UTM coordinates
+	/// </summary>
+	/// <param name="coordinates">WGS84 coordinates</param>
+	/// <param name="utmCoordinates">UTM coordinates</param>
+	/// <param name="zone">UTM zone</param>
+	public static void Convert(Coordinate[] coordinates, UtmCoordinate[] utmCoordinates, int zone)
 	{
-		np.reshape(coordinates, (coordinates.shape[0], 4));
-		var res = np.zeros((coordinates.shape[0], 4));
+		if (coordinates.Length != utmCoordinates.Length)
+		{
+			throw new ArgumentException($"{nameof(coordinates)} and {nameof(utmCoordinates)} have different length");
+		}
 
-		#region ZoneNumber from Longitude
+		unsafe
+		{
+			fixed (Coordinate* ptrCoord = coordinates)
+			{
+				fixed (UtmCoordinate* ptrUTM = utmCoordinates)
+				{
+					ConvertArrayUnsafe(ptrCoord, ptrUTM, (UIntPtr)coordinates.Length, (UIntPtr)zone);
+				}
+			}
+		}
+	}
 
-		res[":, 3"] = np.floor((coordinates[":, 1"] + 180) / 6) + 1;
-
-		#endregion
-
-		#region LatitudeBand from Latitude
-
-		var latitudes = coordinates[":, 0"];
-		var latShift = latitudes + 80;
-		// Fixme : conditions are wrong
-		// latShift < 0 => 0
-		// latShift >= 72+80 => 22
-		// latShift >= 84+80 => 23/24
-		NDArray ab = latShift < 0;
-		NDArray x = latitudes >= 72;
-		NDArray yz = latitudes >= 84;
-		res[":, 4"] = latShift / 8 + 2; // skip ab
-		/*res[ab] = 0;
-		res[x] = 22;
-		res[yz] = 23; */
-
-		#endregion
-
-
-		return res;
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="coordinate"></param>
+	/// <returns></returns>
+	public static UtmCoordinate Convert(Coordinate coordinate)
+	{
+		return ConvertUnsafe(coordinate, (UIntPtr)DetermineZone(coordinate));
 	}
 }

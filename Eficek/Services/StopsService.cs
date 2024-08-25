@@ -12,8 +12,9 @@ public class StopsService(NetworkService networkService)
 
 	public IReadOnlyList<StopGroup> GetNearby(Coordinate coordinate)
 	{
-		var eSquare = (int)(coordinate.UTM.Easting / SquareSize);
-		var nSquare = (int)(coordinate.UTM.Northing / SquareSize);
+		var utm = UtmCoordinateBuilder.Convert(coordinate);
+		var eSquare = (int)(utm.Easting / SquareSize);
+		var nSquare = (int)(utm.Northing / SquareSize);
 
 		var nearby = new List<StopGroup>();
 

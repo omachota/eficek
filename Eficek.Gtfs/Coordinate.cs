@@ -1,5 +1,8 @@
+using System.Runtime.InteropServices;
+
 namespace Eficek.Gtfs;
 
+[StructLayout(LayoutKind.Sequential)]
 public struct Coordinate(double latitude, double longitude)
 {
 	/// <summary>
