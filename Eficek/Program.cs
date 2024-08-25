@@ -5,7 +5,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddSingleton<NetworkService>();
+builder.Services.AddSingleton<NetworkSingletonService>();
+builder.Services.AddScoped<NetworkService>();
+builder.Services.AddScoped<StopsService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -32,5 +34,7 @@ Directory.CreateDirectory(gtfsCoreDirectory);
 
 var pragueGtfs = new PragueGtfs(app.Logger, app.Configuration, gtfsCoreDirectory);
 await pragueGtfs.Download(); // wait for the first download
+var networkBuilder = new NetworkBuilder(gtfsCoreDirectory);
+var network = await networkBuilder.BuildAsync(app.Logger);
 
 app.Run();

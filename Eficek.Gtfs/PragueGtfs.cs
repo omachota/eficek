@@ -37,6 +37,11 @@ public class PragueGtfs
 	/// <param name="force"></param>
 	public async ValueTask Download(bool force = false)
 	{
+		if (!Directory.Exists(_gtfsDescription.FullGtfsDirectory))
+		{
+			Directory.CreateDirectory(_gtfsDescription.FullGtfsDirectory);
+		}
+		
 		if (File.Exists(Path.Combine(_gtfsDescription.FullGtfsDirectory, _gtfsDescription.FeedInfo)) && !force)
 		{
 			var feedInfo = _parser.ParseFeedInfo();

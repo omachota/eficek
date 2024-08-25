@@ -1,9 +1,8 @@
-using CoordinateSharp;
 using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
-public class StopsService(Network network)
+public class StopsService(NetworkService networkService)
 {
 	private const int SquareSize = 500; // In meters
 
@@ -20,7 +19,7 @@ public class StopsService(Network network)
 
 		for (var i = 0; i < _neighbours.Length; i++)
 		{
-			if (!network.NearbyStopGroups.TryGetValue(
+			if (!networkService.Network.NearbyStopGroups.TryGetValue(
 				    (eSquare + _neighbours[i].Item1, nSquare + _neighbours[i].Item2),
 				    out var stopGroups))
 			{
@@ -29,7 +28,7 @@ public class StopsService(Network network)
 
 			for (var j = 0; j < stopGroups.Length; j++)
 			{
-				if (stopGroups[j].Coordinate.Manhattan(coordinate) <= SquareSize)
+				if (stopGroups[j].Coordinate?.Manhattan(coordinate) <= SquareSize)
 				{
 					nearby.Add(stopGroups[j]);
 				}

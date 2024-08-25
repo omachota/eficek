@@ -1,4 +1,3 @@
-using CoordinateSharp;
 using Eficek.Gtfs;
 using Eficek.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,22 +6,17 @@ namespace Eficek.Controllers;
 
 [Route("stops")]
 [ApiController]
-public class StopsController(NetworkService networkService) : ControllerBase
+public class StopsController(NetworkService networkService, StopsService stopsService) : ControllerBase
 {
-	private NetworkService _networkService = networkService;
-
+	[HttpGet("GetAll")]
 	public IEnumerable<StopGroup> GetAll()
 	{
-		
-		throw new NotImplementedException();
+		return networkService.Network.StopGroups.Values;
 	}
 
+	[HttpGet("GetNearby")]
 	public IEnumerable<StopGroup> GetNearby(double lat, double lon)
 	{
-		var coordinate = new Coordinate(lat, lon);
-		var nearby = new List<StopGroup>();
-		
-		
-		return nearby;
+		return stopsService.GetNearby(new Coordinate(lat, lon));
 	}
 }

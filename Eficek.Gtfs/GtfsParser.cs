@@ -19,8 +19,6 @@ public class GtfsParser(GtfsDescription description, ILogger logger)
 		var path = Path.Combine(description.FullGtfsDirectory, filePath);
 		using var reader = Sep.New(',').Reader().FromFile(path);
 		var data = new List<T>();
-		var x = Sep.New(',').Reader().From(new MemoryStream(new byte[32]));
-		x.
 		
 		foreach (var row in reader)
 		{

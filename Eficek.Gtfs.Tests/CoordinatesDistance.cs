@@ -1,5 +1,3 @@
-using CoordinateSharp;
-
 namespace Eficek.Gtfs.Tests;
 
 public class CoordinatesDistance

@@ -1,5 +1,3 @@
-using CoordinateSharp;
-
 namespace Eficek.Gtfs.Tests;
 
 public class StopIdGroupName
@@ -27,6 +25,6 @@ public class StopIdGroupName
 
 	private static Stop StopWithId(string stopId)
 	{
-		return new Stop(stopId, "", new Coordinate(0, 0), "", "", LocationType.Stop, "", 0, "", "", "", "", 0);
+		return new Stop(stopId, "", new Coordinate(0, 0), "", "", LocationType.Stop, "", 0, "", "", "", "", 1);
 	}
 }

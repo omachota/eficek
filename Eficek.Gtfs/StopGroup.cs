@@ -1,5 +1,3 @@
-using CoordinateSharp;
-
 namespace Eficek.Gtfs;
 
 /// <summary>
@@ -7,6 +5,11 @@ namespace Eficek.Gtfs;
 /// </summary>
 public class StopGroup
 {
-	public Dictionary<string, Stop> Stops;
-	public Coordinate Coordinate; // Probably mean from others?
+	public Dictionary<string, Stop> Stops = new();
+	public Coordinate? Coordinate = null; // Probably mean from others?
+
+	public void AddStop(Stop stop)
+	{
+		Stops.Add(stop.StopName, stop);
+	}
 }

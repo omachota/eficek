@@ -2,19 +2,7 @@ using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
-public class NetworkService
+public class NetworkService(NetworkSingletonService networkSingletonService)
 {
-	// Can't be implemented as a property
-	private Network _network = null!;
-
-	public Network Get()
-	{
-		return _network;
-	}
-
-	// Should be locked while updating
-	public async ValueTask Update()
-	{
-		Interlocked.Exchange(ref _network, new Network());
-	}
+	public Network Network { get; } = networkSingletonService.Get();
 }

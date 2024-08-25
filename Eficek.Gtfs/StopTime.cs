@@ -4,8 +4,11 @@ namespace Eficek.Gtfs;
 
 public class StopTime : IFromRow<StopTime>
 {
+	public string TripId;
+	
+	
 	public static StopTime FromRow(SepReader.Row row)
 	{
-		throw new NotImplementedException();
+		return new StopTime();
 	}
 }
