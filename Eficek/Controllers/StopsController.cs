@@ -8,6 +8,7 @@ namespace Eficek.Controllers;
 [ApiController]
 public class StopsController(NetworkService networkService, StopsService stopsService) : ControllerBase
 {
+	[Obsolete("We should not allow user to get all StopGroups unless we change the amount of data")]
 	[HttpGet("GetAll")]
 	public IEnumerable<StopGroup> GetAll()
 	{
@@ -15,8 +16,18 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 	}
 
 	[HttpGet("GetNearby")]
-	public IEnumerable<StopGroup> GetNearby(double lat, double lon)
+	public IActionResult GetNearby(double lat, double lon)
 	{
-		return stopsService.GetNearby(new Coordinate(lat, lon));
+		var b = Ok(stopsService.GetNearby(new Coordinate(lat, lon)));
+		return b;
+	}
+
+	[HttpGet("Search")]
+	public IEnumerable<string> Search(string value)
+	{
+		if (value.Length < 3)
+			return Array.Empty<string>();
+
+		throw new NotImplementedException();
 	}
 }

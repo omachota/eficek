@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using nietras.SeparatedValues;
@@ -9,24 +10,28 @@ public class NetworkBuilder(string path)
 {
 	private readonly string _path = path;
 
-	public const int SquareSize = 500;
-
-	private static List<T> Parse<T>(string filePath) where T : IFromRow<T>
+	private static List<T> Parse<T>(string filePath, Func<T, bool>? predicate = null) where T : IFromRow<T>
 	{
 		using var reader = Sep.New(',').Reader().FromFile(filePath);
 		var data = new List<T>();
 
 		foreach (var row in reader)
 		{
-			data.Add(T.FromRow(row));
+			var value = T.FromRow(row);
+			if (predicate != null && !predicate(value))
+			{
+				continue;
+			}
+
+			data.Add(value);
 		}
 
 		return data;
 	}
 
-	private delegate (string, T) KeySelector<T>(SepReader.Row row);
+	private delegate (string, T) KeyValueSelector<T>(SepReader.Row row);
 
-	private static Dictionary<string, T> ParseDict<T>(string filePath, KeySelector<T> keySelector,
+	private static Dictionary<string, T> ParseDict<T>(string filePath, KeyValueSelector<T> keyValueSelector,
 	                                                  Func<T, bool>? predicate = null)
 	{
 		using var reader = Sep.New(',').Reader().FromFile(filePath);
@@ -34,13 +39,10 @@ public class NetworkBuilder(string path)
 
 		foreach (var row in reader)
 		{
-			var (key, value) = keySelector(row);
-			if (predicate != null)
+			var (key, value) = keyValueSelector(row);
+			if (predicate != null && !predicate(value))
 			{
-				if (!predicate(value))
-				{
-					continue;
-				}
+				continue;
 			}
 
 			data.Add(key, value);
@@ -62,20 +64,19 @@ public class NetworkBuilder(string path)
 		throw new Exception($"File `{filePath}` does not contain data");
 	}
 
-	private readonly KeySelector<Stop> _stopSelector = row =>
+	private readonly KeyValueSelector<Stop> _stopSelector = row =>
 	{
 		var s = Stop.FromRow(row);
 		return (s.StopId, s);
 	};
 
-	private readonly Func<Stop, bool> _stopFilter = stop =>
-		stop.ZoneRegionType.HasValue == false || stop.ZoneRegionType == 0;
+	private readonly Func<Stop, bool> _stopFilter = stop => stop.ZoneRegionType is > 0;
 
 	public async Task<Network> BuildAsync(ILogger logger)
 	{
 		var stopwatch = Stopwatch.StartNew();
 		var feedTask = Task.Run(() => ParseSingle<FeedInfo>(BuildRelativeFilePath("feed_info.txt")));
-		var stopsTask = Task.Run(() => ParseDict<Stop>(BuildRelativeFilePath("stops.txt"), _stopSelector, _stopFilter));
+		var stopsTask = Task.Run(() => Parse<Stop>(BuildRelativeFilePath("stops.txt"), _stopFilter));
 		var routesTask = Task.Run(() => Parse<Route>(BuildRelativeFilePath("routes.txt")));
 		var tripsTask = Task.Run(() => Parse<Trip>(BuildRelativeFilePath("trips.txt")));
 		var stopTimesTask = Task.Run(() => Parse<StopTime>(BuildRelativeFilePath("stop_times.txt")));
@@ -89,15 +90,15 @@ public class NetworkBuilder(string path)
 			logger.LogError(e, "Failed to parse gtfs data");
 			throw;
 		}
-		
-		var coords = stopsTask.Result.Values.Select(x => x.Coordinate).ToArray();
-		var utm = new UtmCoordinate[coords.Length];
-		UtmCoordinateBuilder.Convert(coords, utm, 33);
 
-		for (int i = 0; i < 10; i++)
-		{
-			logger.LogInformation("{} {}; {} {}",coords[i].Latitude, coords[i].Longitude, utm[i].Northing, utm[i].Easting);
-		}
+		UtmCoordinateBuilder.AssignUtmCoordinate(stopsTask.Result);
+		var stopGroups = GenerateStopGroups(stopsTask.Result);
+
+		var network = new Network();
+		network.Nodes = [];
+		network.Stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
+		network.StopGroups = stopGroups.ToFrozenDictionary();
+		network.NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary();
 
 		stopwatch.Stop();
 
@@ -106,9 +107,6 @@ public class NetworkBuilder(string path)
 			stopwatch.ElapsedMilliseconds, stopsTask.Result.Count, routesTask.Result.Count, tripsTask.Result.Count,
 			stopTimesTask.Result.Count);
 
-		var network = new Network();
-		network.Nodes = [];
-		network.Stops = stopsTask.Result.ToFrozenDictionary();
 		return network;
 	}
 
@@ -117,43 +115,45 @@ public class NetworkBuilder(string path)
 		return Path.Combine(_path, "Prague", fileName);
 	}
 
-	public Dictionary<string, StopGroup> GenerateStopGroups(IList<Stop> stops)
+	public Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
 	{
 		var dict = new Dictionary<string, StopGroup>();
 		for (var i = 0; i < stops.Count; i++)
 		{
 			// Todo : GroupName should be precomputed when creating a stop?
 			var groupName = stops[i].GroupName();
-			if (!dict.TryGetValue(groupName, out var stopGroup))
+			if (dict.TryGetValue(groupName, out var stopGroup))
 			{
-				stopGroup = new StopGroup { };
+				stopGroup.AddStop(stops[i]);
 			}
-
-			stopGroup.AddStop(stops[i]);
+			else
+			{
+				var st = new StopGroup();
+				st.AddStop(stops[i]);
+				dict[groupName] = st;
+			}
 		}
 
 		return dict;
 	}
 
-	// private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(IList<StopGroup> stopGroups)
-	// {
-	// 	var dict = new Dictionary<(int, int), List<StopGroup>>();
-	// 	for (var i = 0; i < stopGroups.Count; i++)
-	// 	{
-	// 		// Since the whole Czech republic is in 33U, we don't have to care about UTM rectangles
-	// 		var utm = stopGroups[i].Coordinate.UTM;
-	// 		var eSq = (int)(utm.Easting / SquareSize);
-	// 		var nSq = (int)(utm.Northing / SquareSize);
-	// 		if (dict.TryGetValue((eSq, nSq), out var nearbyStopGroups))
-	// 		{
-	// 			nearbyStopGroups.Add(stopGroups[i]);
-	// 		}
-	// 		else
-	// 		{
-	// 			dict[(eSq, nSq)] = [stopGroups[i]];
-	// 		}
-	// 	}
-	//
-	// 	return dict;
-	// }
+	private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(IReadOnlyDictionary<string, StopGroup> stopGroups)
+	{
+		var dict = new Dictionary<(int, int), List<StopGroup>>();
+		foreach (var (_, stopGroup) in stopGroups)
+		{
+			// Since the whole Czech republic is in 33U, we don't have to care about UTM rectangles now
+			var box = stopGroup.UtmCoordinate.GetUtmBox();
+			if (dict.TryGetValue(box, out var nearbyStopGroups))
+			{
+				nearbyStopGroups.Add(stopGroup);
+			}
+			else
+			{
+				dict[box] = [stopGroup];
+			}
+		}
+
+		return dict;
+	}
 }

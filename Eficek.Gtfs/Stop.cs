@@ -19,10 +19,10 @@ public class Stop(
 	: IFromRow<Stop>
 {
 	public string StopId = stopId;
-	public string StopName = stopName;
+	public string StopName { get; } = stopName;
 
 	public Coordinate Coordinate = coordinate;
-	public UtmCoordinate UTM;
+	public UtmCoordinate UtmCoordinate;
 
 	// This has to be a string since `P`, `B`, `2,3` and so
 	public string ZoneId = zoneId;
@@ -40,7 +40,7 @@ public class Stop(
 	{
 		return new Stop(
 			row["stop_id"].ToString(),
-			row["stop_name"].ToString(),
+			row["stop_name"].ToString().Trim('\"'),
 			new Coordinate(row["stop_lat"].Parse<double>(), row["stop_lon"].Parse<double>()),
 			row["zone_id"].ToString(),
 			row["stop_url"].ToString(),

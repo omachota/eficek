@@ -6,19 +6,21 @@ public static class CoordinateExtension
 	public const double LatitudeAxis = 6356752.314245;
 
 	/// <summary>
-	/// Calculates Manhattan distance between given coordinates on WGS84
+	/// Calculate Manhattan distance between given UtmCoordinates
 	/// </summary>
 	/// <param name="coordinate"></param>
 	/// <param name="other"></param>
 	/// <returns>Manhattan distance in metres</returns>
-	public static double Manhattan(this Coordinate coordinate, Coordinate other)
+	
+	public static double Manhattan(this UtmCoordinate coordinate, UtmCoordinate other)
 	{
-		var dlat = Math.Abs(coordinate.Latitude - other.Latitude);
-		var dlon = Math.Abs(coordinate.Longitude - other.Longitude);
+		if (coordinate.ZoneNumber != other.ZoneNumber)
+		{
+			return int.MaxValue;
+		}
+		var dn = Math.Abs(coordinate.Northing - other.Northing);
+		var de = Math.Abs(coordinate.Easting - other.Easting);
 
-		var dlatRad = double.DegreesToRadians(dlat);
-		var dlonRad = double.DegreesToRadians(dlon);
-
-		return dlatRad * LatitudeAxis + dlonRad * LongitudeAxis;
+		return dn + de;
 	}
 }

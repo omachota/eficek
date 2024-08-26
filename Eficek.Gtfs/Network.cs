@@ -8,7 +8,8 @@ public class Network
 	// Using FrozenDictionary since it is faster on benchmarks 
 	public FrozenDictionary<string, Stop> Stops;
 	public FrozenDictionary<string, StopGroup> StopGroups;
-	public FrozenDictionary<(int, int), StopGroup[]> NearbyStopGroups;
+	// List inside needs also to be frozen
+	public FrozenDictionary<(int, int), List<StopGroup>> NearbyStopGroups;
 	public ImmutableArray<Node> Nodes;
 
 	public string FindStops(string stopGroupId)
