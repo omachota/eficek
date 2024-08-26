@@ -1,4 +1,5 @@
 using Eficek.Gtfs;
+using Eficek.Models;
 using Eficek.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,18 +17,14 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 	}
 
 	[HttpGet("GetNearby")]
-	public IActionResult GetNearby(double lat, double lon)
+	public IEnumerable<NearbyStopGroup> GetNearby(double lat, double lon)
 	{
-		var b = Ok(stopsService.GetNearby(new Coordinate(lat, lon)));
-		return b;
+		return stopsService.GetNearby(new Coordinate(lat, lon));
 	}
 
 	[HttpGet("Search")]
-	public IEnumerable<string> Search(string value)
+	public IEnumerable<StopGroupMatch> Search(string value)
 	{
-		if (value.Length < 3)
-			return Array.Empty<string>();
-
-		throw new NotImplementedException();
+		return value.Length < 3 ? Array.Empty<StopGroupMatch>() : stopsService.Search(value, -1);
 	}
 }

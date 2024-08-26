@@ -1,5 +1,5 @@
 using System.Collections.Frozen;
-using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 
 namespace Eficek.Gtfs;
 
@@ -10,7 +10,7 @@ public class Network
 	public FrozenDictionary<string, StopGroup> StopGroups;
 	// List inside needs also to be frozen
 	public FrozenDictionary<(int, int), List<StopGroup>> NearbyStopGroups;
-	public ImmutableArray<Node> Nodes;
+	public ReadOnlyCollection<Node> Nodes;
 
 	public string FindStops(string stopGroupId)
 	{

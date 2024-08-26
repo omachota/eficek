@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using nietras.SeparatedValues;
@@ -63,6 +64,62 @@ public class NetworkBuilder(string path)
 		throw new Exception($"File `{filePath}` does not contain data");
 	}
 
+	private static void FillTripsWithStopTimes(Dictionary<string, Trip> trips, IReadOnlyList<StopTime> stopTimes)
+	{
+		// stopTimes are also sorted according to trips 
+		Trip? lastTrip = null;
+		for (var i = 0; i < stopTimes.Count; i++)
+		{
+			if (lastTrip != null && stopTimes[i].TripId == lastTrip.TripId)
+			{
+				lastTrip.StopTimes.Add(stopTimes[i]);
+			}
+			else
+			{
+				lastTrip = trips[stopTimes[i].TripId];
+				lastTrip.StopTimes.Add(stopTimes[i]);
+			}
+		}
+	}
+
+	private static Node BuildStopTimeNode(List<Node> nodes, string stopId, int time, Node.State state)
+	{
+		var node = new Node(stopId, time, state);
+		nodes.Add(node);
+		return node;
+	}
+
+	private static List<Node> BuildStopTimesGraph(Dictionary<string, Trip> trips)
+	{
+		var nodes = new List<Node>();
+		Node? previous = null;
+		foreach (var (_, trip) in trips)
+		{
+			var stopTimes = trip.StopTimes;
+			for (var i = 0; i < stopTimes.Count; i++)
+			{
+				var arr = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
+					Node.State.InStop); // Get off the trip
+				// TODO : Should we check SequenceId?
+				previous?.AddEdge(arr); // Connect last dep with arr
+
+				if (i >= stopTimes.Count - 1)
+				{
+					break; // This is last stopTime for a trip. No need to create dep nodes
+				}
+				
+				var dep = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].DepartureTime, Node.State.OnBoard);
+				arr.AddEdge(dep); // We don't leave
+				var depFromStop = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].DepartureTime, Node.State.InStop);
+				depFromStop.AddEdge(dep); // Boarding edge
+
+				previous = dep;
+			}
+		}
+
+		return nodes;
+	}
+
 	private readonly KeyValueSelector<Stop> _stopSelector = row =>
 	{
 		var s = Stop.FromRow(row);
@@ -77,7 +134,11 @@ public class NetworkBuilder(string path)
 		var feedTask = Task.Run(() => ParseSingle<FeedInfo>(BuildRelativeFilePath("feed_info.txt")));
 		var stopsTask = Task.Run(() => Parse<Stop>(BuildRelativeFilePath("stops.txt"), _stopFilter));
 		var routesTask = Task.Run(() => Parse<Route>(BuildRelativeFilePath("routes.txt")));
-		var tripsTask = Task.Run(() => Parse<Trip>(BuildRelativeFilePath("trips.txt")));
+		var tripsTask = Task.Run(() => ParseDict<Trip>(BuildRelativeFilePath("trips.txt"), row =>
+		{
+			var t = Trip.FromRow(row);
+			return (t.TripId, t);
+		}));
 		var stopTimesTask = Task.Run(() => Parse<StopTime>(BuildRelativeFilePath("stop_times.txt")));
 
 		try
@@ -92,12 +153,16 @@ public class NetworkBuilder(string path)
 
 		UtmCoordinateBuilder.AssignUtmCoordinate(stopsTask.Result);
 		var stopGroups = GenerateStopGroups(stopsTask.Result);
+		FillTripsWithStopTimes(tripsTask.Result, stopTimesTask.Result);
+		
 
-		var network = new Network();
-		network.Nodes = [];
-		network.Stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
-		network.StopGroups = stopGroups.ToFrozenDictionary();
-		network.NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary();
+		var network = new Network
+		{
+			Nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result)),
+			Stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId),
+			StopGroups = stopGroups.ToFrozenDictionary(),
+			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary()
+		};
 
 		stopwatch.Stop();
 
@@ -127,7 +192,7 @@ public class NetworkBuilder(string path)
 			}
 			else
 			{
-				var st = new StopGroup();
+				var st = new StopGroup(groupName);
 				st.AddStop(stops[i]);
 				dict[groupName] = st;
 			}

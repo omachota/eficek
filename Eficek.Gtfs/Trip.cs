@@ -9,6 +9,8 @@ public class Trip(string routeId, string serviceId, string tripId, string tripHe
 	public string ServiceId = serviceId;
 	public string TripId = tripId;
 	public string TripHeadSign = tripHeadSign;
+
+	public List<StopTime> StopTimes = [];
 	// TripShortName omitted
 
 

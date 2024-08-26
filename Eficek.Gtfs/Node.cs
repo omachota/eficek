@@ -1,16 +1,21 @@
 namespace Eficek.Gtfs;
 
-public class Node(int id, string stopId, DateTime time, Node.State s)
+public class Node(string stopId, int time, Node.State s)
 {
 	public enum State
 	{
 		InStop,
-		
+		OnBoard,
 	}
 
-	public readonly int Id = id;
 	public readonly string StopId = stopId;
-	public readonly DateTime Time = time;
+	// From Midnight
+	public readonly int Time = time;
 	public readonly State S = s;
 	public List<Node> Edges = []; // Should be ImmutableList
+
+	public void AddEdge(Node to)
+	{
+		Edges.Add(to);
+	}
 }
