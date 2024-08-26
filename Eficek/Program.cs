@@ -34,7 +34,10 @@ Directory.CreateDirectory(gtfsCoreDirectory);
 
 var pragueGtfs = new PragueGtfs(app.Logger, app.Configuration, gtfsCoreDirectory);
 await pragueGtfs.Download(); // wait for the first download
-var networkBuilder = new NetworkBuilder(gtfsCoreDirectory);
-var network = await networkBuilder.BuildAsync(app.Logger);
+var networkSingletonService = app.Services.GetService<NetworkSingletonService>();
+if (networkSingletonService == null)
+	throw new NullReferenceException($"Failed to get {nameof(NetworkSingletonService)}");
+
+await networkSingletonService.Update(gtfsCoreDirectory);
 
 app.Run();
