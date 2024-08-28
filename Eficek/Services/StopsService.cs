@@ -56,4 +56,10 @@ public class StopsService(NetworkService networkService)
 
 		return matches;
 	}
+
+	public StopGroup? TryGet(string stopGroupId)
+	{
+		networkService.Network.StopGroups.TryGetValue(stopGroupId, out var stopGroup);
+		return stopGroup;
+	}
 }
