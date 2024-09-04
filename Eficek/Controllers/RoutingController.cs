@@ -8,7 +8,7 @@ namespace Eficek.Controllers;
 public class RoutingController(StopsService stopsService) : ControllerBase
 {
 	/// <summary>
-	/// 
+	/// Toto je test
 	/// </summary>
 	/// <param name="from">StopGroup id</param>
 	/// <param name="to">StopGroup id</param>
@@ -18,9 +18,15 @@ public class RoutingController(StopsService stopsService) : ControllerBase
 		var fs = stopsService.TryGet(from);
 		var ts = stopsService.TryGet(to);
 
-		if (fs == null || ts == null)
+		if (fs == null)
 		{
-			return NotFound("");
+			return NotFound($"Stop with id {from} not found");
+		}
+
+		if (ts == null)
+		{
+			return NotFound($"Stop with id {to} not found");
+			
 		}
 
 		return Ok();
