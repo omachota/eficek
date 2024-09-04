@@ -7,7 +7,7 @@ namespace Eficek.Controllers;
 
 [Route("stops")]
 [ApiController]
-public class StopsController(NetworkService networkService, StopsService stopsService) : ControllerBase
+public class StopsController(NetworkService networkService, StopsService stopsService, RoutingService routingService) : ControllerBase
 {
 	[Obsolete("We should not allow user to get all StopGroups unless we change the amount of data")]
 	[HttpGet("GetAll")]
@@ -26,5 +26,17 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 	public IEnumerable<StopGroupMatch> Search(string value)
 	{
 		return value.Length < 3 ? Array.Empty<StopGroupMatch>() : stopsService.Search(value, -1);
+	}
+
+	public IActionResult Departures(string stopId) // or stopGroupId?
+	{
+		// TODO : convert stopId to stopGroupId
+		var stopGroup = stopsService.TryGet(stopId);
+		if (stopGroup == null)
+		{
+			return NotFound($"Stop {stopId} not found");
+		}
+
+		return Ok(routingService.StopGroupDepartures(stopGroup));
 	}
 }

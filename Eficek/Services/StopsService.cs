@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Eficek.Gtfs;
 using Eficek.Models;
+using Stop = Eficek.Gtfs.Stop;
 
 namespace Eficek.Services;
 

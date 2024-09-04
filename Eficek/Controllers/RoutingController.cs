@@ -13,6 +13,7 @@ public class RoutingController(StopsService stopsService, RoutingService routing
 	/// </summary>
 	/// <param name="from">StopGroup id</param>
 	/// <param name="to">StopGroup id</param>
+	/// <param name="start"></param>
 	[HttpGet("Search")]
 	public IActionResult Search(string from, string to, DateTime start)
 	{
@@ -21,12 +22,12 @@ public class RoutingController(StopsService stopsService, RoutingService routing
 
 		if (fs == null)
 		{
-			return NotFound($"Stop with id {from} not found");
+			return NotFound($"StopGroup {from} not found");
 		}
 
 		if (ts == null)
 		{
-			return NotFound($"Stop with id {to} not found");
+			return NotFound($"StopGroup {to} not found");
 		}
 
 		// Start search 10 times. Stop if next departure is a day later than start 
