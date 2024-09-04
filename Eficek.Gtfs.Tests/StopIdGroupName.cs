@@ -12,7 +12,7 @@ public class StopIdGroupName
 	[InlineData("U1072", "U1072S1")]
 	public void Test(string? rootName, string stopId)
 	{
-		var stop = StopWithId(stopId);
+		var stop = StopHelper.StopWithId(stopId);
 		if (rootName == null)
 		{
 			Assert.Throws<ArgumentException>(() => stop.GroupName());
@@ -21,10 +21,5 @@ public class StopIdGroupName
 		{
 			Assert.Equal(rootName, stop.GroupName());
 		}
-	}
-
-	private static Stop StopWithId(string stopId)
-	{
-		return new Stop(stopId, "", new Coordinate(0, 0), "", "", LocationType.Stop, "", 0, "", "", "", "", 1);
 	}
 }

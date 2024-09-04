@@ -62,4 +62,10 @@ public class StopsService(NetworkService networkService)
 		networkService.Network.StopGroups.TryGetValue(stopGroupId, out var stopGroup);
 		return stopGroup;
 	}
+
+	public Stop? TryGetStop(string stopId)
+	{
+		networkService.Network.Stops.TryGetValue(stopId, out var stop);
+		return stop;
+	}
 }

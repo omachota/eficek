@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<NetworkSingletonService>();
 builder.Services.AddScoped<NetworkService>();
 builder.Services.AddScoped<StopsService>();
+builder.Services.AddScoped<RoutingService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

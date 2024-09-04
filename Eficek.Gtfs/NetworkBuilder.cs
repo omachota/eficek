@@ -8,8 +8,6 @@ namespace Eficek.Gtfs;
 
 public class NetworkBuilder(string path)
 {
-	private readonly string _path = path;
-
 	private static List<T> Parse<T>(string filePath, Func<T, bool>? predicate = null) where T : IFromRow<T>
 	{
 		using var reader = Sep.New(',').Reader().FromFile(filePath);
@@ -82,14 +80,14 @@ public class NetworkBuilder(string path)
 		}
 	}
 
-	private static Node BuildStopTimeNode(List<Node> nodes, string stopId, int time, Node.State state)
+	private static Node BuildStopTimeNode(List<Node> nodes, Stop stop, int time, Node.State state)
 	{
-		var node = new Node(stopId, time, state);
+		var node = new Node(nodes.Count, stop, time, state);
 		nodes.Add(node);
 		return node;
 	}
 
-	private static List<Node> BuildStopTimesGraph(Dictionary<string, Trip> trips)
+	private static List<Node> BuildStopTimesGraph(IDictionary<string, Trip> trips, IDictionary<string, Stop> stopLookup)
 	{
 		var nodes = new List<Node>();
 		Node? previous = null;
@@ -98,22 +96,24 @@ public class NetworkBuilder(string path)
 			var stopTimes = trip.StopTimes;
 			for (var i = 0; i < stopTimes.Count; i++)
 			{
-				var arr = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
-					Node.State.InStop); // Get off the trip
+				var stop = stopLookup[stopTimes[i].StopId];
+				// TODO : ArrivalTime and DepartureTime differ
+				var arr = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime, Node.State.OnBoard);
 				// TODO : Should we check SequenceId?
-				previous?.AddEdge(arr); // Connect last dep with arr
+				previous?.AddEdge(arr, trip); // Connect last dep (now last arr) with arr
 
+				var nextPossibleDeparture = BuildStopTimeNode(nodes, stop,
+					stopTimes[i].ArrivalTime + Constants.MinTransferTime, Node.State.InStop);
+				arr.AddEdge(nextPossibleDeparture, trip); // Get off the trip
 				if (i >= stopTimes.Count - 1)
 				{
-					break; // This is last stopTime for a trip. No need to create dep nodes
+					break; // This is last stopTime for a trip. No need to create dep node
 				}
-				
-				var dep = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].DepartureTime, Node.State.OnBoard);
-				arr.AddEdge(dep); // We don't leave
-				var depFromStop = BuildStopTimeNode(nodes, stopTimes[i].StopId, stopTimes[i].DepartureTime, Node.State.InStop);
-				depFromStop.AddEdge(dep); // Boarding edge
 
-				previous = dep;
+				var dep = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.InStop);
+				dep.AddEdge(arr, trip); // Boarding
+
+				previous = arr;
 			}
 		}
 
@@ -139,7 +139,11 @@ public class NetworkBuilder(string path)
 			var t = Trip.FromRow(row);
 			return (t.TripId, t);
 		}));
-		var stopTimesTask = Task.Run(() => Parse<StopTime>(BuildRelativeFilePath("stop_times.txt")));
+		var stopTimesTask = Task.Run(() => Parse<StopTime>(BuildRelativeFilePath("stop_times.txt"), stopTime =>
+		{
+			// Trains contain non stop points
+			return stopTime.StopId.StartsWith('U');
+		}));
 
 		try
 		{
@@ -154,14 +158,16 @@ public class NetworkBuilder(string path)
 		UtmCoordinateBuilder.AssignUtmCoordinate(stopsTask.Result);
 		var stopGroups = GenerateStopGroups(stopsTask.Result);
 		FillTripsWithStopTimes(tripsTask.Result, stopTimesTask.Result);
-		
+		var stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
+		var nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result, stops));
 
 		var network = new Network
 		{
-			Nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result)),
-			Stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId),
+			Nodes = nodes,
+			Stops = stops,
 			StopGroups = stopGroups.ToFrozenDictionary(),
-			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary()
+			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary(),
+			StopNodes = GenerateStopNodes(nodes).ToFrozenDictionary()
 		};
 
 		stopwatch.Stop();
@@ -176,7 +182,43 @@ public class NetworkBuilder(string path)
 
 	private string BuildRelativeFilePath(string fileName)
 	{
-		return Path.Combine(_path, "Prague", fileName);
+		return Path.Combine(path, "Prague", fileName);
+	}
+
+	private static readonly Trip _waiting = new Trip("0", "1111111", "waiting", "Čekačka");
+
+	private static Dictionary<string, List<Node>> GenerateStopNodes(IList<Node> nodes)
+	{
+		var stopNodes = new Dictionary<string, List<Node>>();
+
+		for (var i = 0; i < nodes.Count; i++)
+		{
+			if (nodes[i].S != Node.State.InStop)
+			{
+				continue; // Skip nodes from which we can't start
+			}
+
+			if (stopNodes.TryGetValue(nodes[i].Stop.StopId, out var list))
+			{
+				list.Add(nodes[i]);
+			}
+			else
+			{
+				stopNodes[nodes[i].Stop.StopId] = [nodes[i]];
+			}
+		}
+
+		// Waiting edges
+		foreach (var (_, n) in stopNodes)
+		{
+			n.Sort(new TimeNodeComparer());
+			for (var i = 0; i < n.Count - 1; i++)
+			{
+				nodes[n[i].InternalId].AddEdge(nodes[n[i+1].InternalId], _waiting);
+			}
+		}
+
+		return stopNodes;
 	}
 
 	public Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
@@ -201,7 +243,8 @@ public class NetworkBuilder(string path)
 		return dict;
 	}
 
-	private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(IReadOnlyDictionary<string, StopGroup> stopGroups)
+	private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(
+		IReadOnlyDictionary<string, StopGroup> stopGroups)
 	{
 		var dict = new Dictionary<(int, int), List<StopGroup>>();
 		foreach (var (_, stopGroup) in stopGroups)

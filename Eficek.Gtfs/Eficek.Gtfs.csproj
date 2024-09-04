@@ -15,7 +15,9 @@
 
     <!--    don't forget to install lib-proj (proj-devel)   -->
     <Target Name="utm_convert" BeforeTargets="Compile">
-        <Exec Command="whereis libproj.so"/>
+        <!-- OpenSuse fails to find libproj.so, because it's libproj.so.25 at the moment... -->
+        <!-- make sure that sqlite3 package is installed -->
+        <!--        <Exec Command="whereis libproj.so"/>-->
         <Exec Condition="'$(Configuration)' == 'Release'" Command="cargo build --release" WorkingDirectory="./../utm_convert"/>
         <Exec Condition="'$(Configuration)' != 'Release'" Command="cargo build" WorkingDirectory="./../utm_convert"/>
     </Target>
