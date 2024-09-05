@@ -13,7 +13,8 @@ public class RoutingController(StopsService stopsService, RoutingService routing
 	/// </summary>
 	/// <param name="from">StopGroup id</param>
 	/// <param name="to">StopGroup id</param>
-	/// <param name="start"></param>
+	/// <param name="start">ISO8601 date</param>
+	/// <returns>Not found if either from or to doesn't exist</returns>
 	[HttpGet("Search")]
 	public IActionResult Search(string from, string to, DateTime start)
 	{
@@ -32,7 +33,32 @@ public class RoutingController(StopsService stopsService, RoutingService routing
 
 		// Start search 10 times. Stop if next departure is a day later than start 
 
-		var nodes = routingService.Search(fs, ts, start);
-		return Ok(nodes.Select(node => new ConnectionNode(node.Stop.StopId, stopsService.TryGetStop(node.Stop.StopId)!.StopName, node.Time, node.S)));
+		// we can only return the first node plus edges, because edges contain link to destination node
+		var (nodes, edges) = routingService.Search(fs, ts, start);
+		Trip? currTrip = null;
+		var trips = new List<Trip>();
+		 
+		// TODO : handle specific cases: waiting should contain only one stop and walking from and to
+		
+		for (var i = 0; i < edges.Count; i++)
+		{
+			if (currTrip == null || currTrip.Id != edges[i].Trip.TripId)
+			{
+				currTrip = new Trip(edges[i].Trip.TripId, edges[i].Trip.TripHeadSign);
+				trips.Add(currTrip);
+			}
+
+			if (i == 0)
+			{
+				currTrip.Stops.Add(new Stop(nodes[0].Stop.StopId, nodes[0].Stop.StopName, DateTime.Now, nodes[0].Stop.Coordinate));
+			}
+
+			var edgeDestination = edges[i].Node;
+			currTrip.Stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName, DateTime.Now, edgeDestination.Stop.Coordinate));
+		}
+		
+		var connection = new Connection(0, trips);
+		
+		return Ok(connection);
 	}
 }

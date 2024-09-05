@@ -1,6 +1,6 @@
 namespace Eficek.Models;
 
-public class Connection(Trip[] trips, int duration)
+public class Connection(int duration, List<Trip> trips)
 {
 	/// <summary>
 	/// Represented in seconds
@@ -10,5 +10,5 @@ public class Connection(Trip[] trips, int duration)
 	/// <summary>
 	/// Trips follow each other and include walking
 	/// </summary>
-	public Trip[] Trips { get; } = trips;
+	public List<Trip> Trips { get; } = trips;
 }

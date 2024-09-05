@@ -12,9 +12,4 @@ public class Network
 	public FrozenDictionary<(int, int), List<StopGroup>> NearbyStopGroups;
 	public ReadOnlyCollection<Node> Nodes;
 	public FrozenDictionary<Stop, List<Node>> StopNodes;
-
-	public string FindStops(string stopGroupId)
-	{
-		throw new NotImplementedException();
-	}
 }

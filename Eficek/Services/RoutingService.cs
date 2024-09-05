@@ -3,19 +3,22 @@ using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
-public struct SearchConnectionDuration(int seconds, int dayCompensation)
+public readonly struct SearchConnectionDuration(int seconds, int dayCompensation)
 {
-	public int Seconds = seconds;
-	public int DayCompensation = dayCompensation;
+	public readonly int Seconds = seconds;
+	public readonly int DayCompensation = dayCompensation;
+
+	public int ToSeconds()
+	{
+		return Seconds + DayCompensation * 24 * 60 * 60;
+	}
 }
 
 public class SearchConnectionDurationComparer : IComparer<SearchConnectionDuration>
 {
 	public int Compare(SearchConnectionDuration x, SearchConnectionDuration y)
 	{
-		var xSec = x.Seconds + x.DayCompensation * 86400;
-		var ySec = y.Seconds + y.DayCompensation * 86400;
-		return xSec.CompareTo(ySec);
+		return x.ToSeconds().CompareTo(y.ToSeconds());
 	}
 }
 
@@ -28,12 +31,13 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	/// <param name="to"></param>
 	/// <param name="start"></param>
 	/// <returns></returns>
-	public List<Node> Search(StopGroup from, StopGroup to, DateTime start)
+	public (List<Node>, List<Edge>) Search(StopGroup from, StopGroup to, DateTime start)
 	{
 		var network = networkService.Network;
 		var queue = new PriorityQueue<Node, SearchConnectionDuration>(new SearchConnectionDurationComparer());
 
 		var backTrack = new Node?[network.Nodes.Count];
+		var edges = new Edge?[network.Nodes.Count];
 		var times = new int[network.Nodes.Count];
 		for (var i = 0; i < times.Length; i++)
 		{
@@ -48,7 +52,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
 			times[node.InternalId] = 0;
 		}
-		
+
 		var destinationNodeId = -1;
 		while (queue.Count > 0)
 		{
@@ -56,9 +60,9 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			{
 				throw new UnreachableException();
 			}
-			
+
 			// logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
-			
+
 			if (node.S != Node.State.OnBoard && to.Stops.Contains(node.Stop))
 			{
 				destinationNodeId = node.InternalId;
@@ -74,10 +78,13 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				{
 					continue;
 				}
+
 				var edgeTime = next.Time - node.Time;
 				var nextNodeTime = new SearchConnectionDuration(priority.Seconds + edgeTime, 0);
-				if (times[internalId] != int.MaxValue || nextNodeTime.Seconds > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
+				if (times[internalId] != int.MaxValue || nextNodeTime.Seconds > times[internalId] ||
+				    !node.Edges[i].OperatesOn(start.DayOfWeek))
 					continue; // ignore if visited earlier
+				edges[internalId] = node.Edges[i];
 				backTrack[internalId] = node;
 				times[internalId] = nextNodeTime.Seconds;
 				queue.Enqueue(next, new SearchConnectionDuration(next.Time, 0));
@@ -86,19 +93,27 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 
 
 		var connectionNodes = new List<Node>();
+		var takenEdges = new List<Edge>();
 		if (destinationNodeId == -1)
-			return connectionNodes;
+			return (connectionNodes, takenEdges);
 		var current = network.Nodes[destinationNodeId];
 		while (current != null)
 		{
 			connectionNodes.Add(current);
+			var e = edges[current.InternalId];
+			if (e != null)
+			{
+				takenEdges.Add(e);
+			}
+
 			current = backTrack[current.InternalId];
 		}
 
+		takenEdges.Reverse();
 		connectionNodes.Reverse();
 		logger.LogInformation("Connection found");
 
-		return connectionNodes;
+		return (connectionNodes, takenEdges);
 	}
 
 	/// <summary>
