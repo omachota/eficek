@@ -3,13 +3,14 @@ using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
-public class RoutingService(NetworkService networkService)
+public class RoutingService(NetworkService networkService, ILogger<RoutingService> logger)
 {
 	/// <summary>
 	/// 
 	/// </summary>
 	/// <param name="from">Valid StopGroup</param>
 	/// <param name="to"></param>
+	/// <param name="start"></param>
 	/// <returns></returns>
 	public List<Node> Search(StopGroup from, StopGroup to, DateTime start)
 	{
@@ -25,12 +26,13 @@ public class RoutingService(NetworkService networkService)
 
 		foreach (var stop in from.Stops)
 		{
-			var node = FirstStopNodeAfter(stop, 0);
+			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
 			if (node == null)
 				continue; // Stop doesn't have any nodes 
 			queue.Enqueue(node, 0); // priority will be travel time
 			times[node.InternalId] = 0;
 		}
+
 
 		var destinationNodeId = -1;
 		while (queue.Count > 0)
@@ -39,11 +41,13 @@ public class RoutingService(NetworkService networkService)
 			{
 				throw new UnreachableException();
 			}
+			
+			logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
 
-			if (to.Stops.Contains(node.Stop))
+			
+			if (node.S == Node.State.InStop && to.Stops.Contains(node.Stop))
 			{
 				destinationNodeId = node.InternalId;
-
 				break;
 			}
 
@@ -53,7 +57,7 @@ public class RoutingService(NetworkService networkService)
 				var internalId = next.InternalId;
 				var edgeTime = next.Time - node.Time;
 				var nextNodeTime = priority + edgeTime;
-				if (nextNodeTime > times[internalId])
+				if (nextNodeTime > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
 					continue; // ignore if visited earlier
 				backTrack[internalId] = node;
 				times[internalId] = nextNodeTime;
@@ -73,10 +77,18 @@ public class RoutingService(NetworkService networkService)
 		}
 
 		connectionNodes.Reverse();
+		logger.LogInformation("Connection found");
 
 		return connectionNodes;
 	}
 
+	/// <summary>
+	/// Find all departures from stopGroup. The number of departures is limited by `maxEntries` and tomorrow 23:59:59.
+	/// </summary>
+	/// <param name="stopGroup"></param>
+	/// <param name="maxEntries"></param>
+	/// <returns>Returns sorted departures - from earliest to latest</returns>
+	/// <exception cref="NotImplementedException"></exception>
 	public List<Node> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
 	{
 		var tomorrow = DateTime.Today.Add(new TimeSpan(1, 23, 59, 59));
@@ -98,24 +110,34 @@ public class RoutingService(NetworkService networkService)
 		var cmp = new EdgeDestinationTimeComparer();
 		while (results.Count < maxEntries)
 		{
-			MinimalCandidates(stopNodes, candidates, cmp);
+			var count = MinimalCandidates(stopNodes, candidates, cmp);
+			if (count == 0)
+			{
+				break;
+			}
+
 			for (var i = 0; i < candidates.Count; i++)
 			{
 				if (results.Count >= maxEntries)
+				{
 					goto end;
-				results.Add(candidates[i]);
+				}
+
+				// results.Add(candidates[i]);
 			}
-			
+
 			candidates.Clear();
 		}
-		
+
 		end:
 
 		throw new NotImplementedException();
 	}
 
+
 	private static int MinimalCandidates(List<(int, List<Node>)> stopNodes, List<Edge> candidates, IComparer<Edge> cmp)
 	{
+		// TODO : change List<> to LinkedList<>
 		for (var i = 0; i < stopNodes.Count; i++)
 		{
 			var (idx, nodes) = stopNodes[i];
@@ -136,11 +158,11 @@ public class RoutingService(NetworkService networkService)
 				candidates.Add(edges[j]);
 			}
 
-			stopNodes[i].Item1 = ++idx;
+			// stopNodes[i].Item1 = ++idx;
 		}
 
 		candidates.Sort(cmp);
-		
+
 		return candidates.Count;
 	}
 
@@ -157,7 +179,12 @@ public class RoutingService(NetworkService networkService)
 		return idx == -1 ? null : nodes[idx];
 	}
 
-	// nodes are sorted by time
+	/// <summary>
+	/// Find the first Node in `nodes` whose time is greater than `time` in log(nodes).
+	/// </summary>
+	/// <param name="nodes">Nodes for a stop that are sorted by time</param>
+	/// <param name="time">In seconds from the midnight</param>
+	/// <returns>Index of the first Node. It returns 0 if a Node is a day later. -1 if no such Node exists.</returns>
 	private static int IndexOfFirstAfter(List<Node> nodes, int time)
 	{
 		var l = 0;

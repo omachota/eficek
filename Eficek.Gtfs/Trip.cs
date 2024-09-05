@@ -5,12 +5,18 @@ namespace Eficek.Gtfs;
 public class Trip(string routeId, string serviceId, string tripId, string tripHeadSign)
 	: IFromRow<Trip>
 {
-	public string RouteId = routeId;
-	public string ServiceId = serviceId;
-	public string TripId = tripId;
-	public string TripHeadSign = tripHeadSign;
+	public Trip(string routeId, string tripId, string tripHeadSign, Service service) : this(routeId, service.ServiceId, tripId, tripHeadSign)
+	{
+		Service = service;
+	}
+	
+	public readonly string RouteId = routeId;
+	public readonly string ServiceId = serviceId;
+	public readonly string TripId = tripId;
+	public readonly string TripHeadSign = tripHeadSign;
+	public Service? Service;
 
-	public List<StopTime> StopTimes = [];
+	public readonly List<StopTime> StopTimes = [];
 	// TripShortName omitted
 
 
@@ -20,7 +26,7 @@ public class Trip(string routeId, string serviceId, string tripId, string tripHe
 			row["route_id"].ToString(),
 			row["service_id"].ToString(),
 			row["trip_id"].ToString(),
-			row["trip_headsign"].ToString()
+			row["trip_headsign"].ToString() // TODO : remove \"
 		);
 	}
 }

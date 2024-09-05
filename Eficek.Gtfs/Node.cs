@@ -18,6 +18,7 @@ public class Node(int internalId, Stop stop, int time, Node.State s)
 
 	public void AddEdge(Node to, Trip trip)
 	{
+		// Console.WriteLine($"Connecting: {Stop.StopName} {Time} {S} with {to.Stop.StopName} {to.Time} {to.S}");
 		Edges.Add(new Edge(to, trip));
 	}
 }

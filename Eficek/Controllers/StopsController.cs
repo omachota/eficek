@@ -28,6 +28,7 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 		return value.Length < 3 ? Array.Empty<StopGroupMatch>() : stopsService.Search(value, -1);
 	}
 
+	[HttpGet("Departures")]
 	public IActionResult Departures(string stopId) // or stopGroupId?
 	{
 		// TODO : convert stopId to stopGroupId

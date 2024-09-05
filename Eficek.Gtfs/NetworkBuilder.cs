@@ -98,23 +98,31 @@ public class NetworkBuilder(string path)
 			{
 				var stop = stopLookup[stopTimes[i].StopId];
 				// TODO : ArrivalTime and DepartureTime differ
-				var arr = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime, Node.State.OnBoard);
-				// TODO : Should we check SequenceId?
-				previous?.AddEdge(arr, trip); // Connect last dep (now last arr) with arr
 
-				var nextPossibleDeparture = BuildStopTimeNode(nodes, stop,
-					stopTimes[i].ArrivalTime + Constants.MinTransferTime, Node.State.InStop);
-				arr.AddEdge(nextPossibleDeparture, trip); // Get off the trip
+				var departure = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.OnBoard);
+				// TODO : Should we check SequenceId?
+				// previous not null, this is at least second stop, connect with previous and create get off edge.
+				if (previous != null)
+				{
+					previous.AddEdge(departure, trip); // Connect last dep (now last arr) with arr
+					var getOff = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
+						Node.State.InStop);
+					departure.AddEdge(getOff, trip); // Get off the trip					
+				}
+
 				if (i >= stopTimes.Count - 1)
 				{
 					break; // This is last stopTime for a trip. No need to create dep node
 				}
 
-				var dep = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.InStop);
-				dep.AddEdge(arr, trip); // Boarding
+				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.InStop);
+				getOn.AddEdge(departure, trip); // Boarding
 
-				previous = arr;
+				// connect the first boarding with following stop if previous == null, otherwise use departure
+				previous = departure;
 			}
+
+			previous = null; // This is so important...
 		}
 
 		return nodes;
@@ -130,6 +138,7 @@ public class NetworkBuilder(string path)
 
 	public async Task<Network> BuildAsync(ILogger logger)
 	{
+		logger.LogInformation("Started parsing gtfs data");
 		var stopwatch = Stopwatch.StartNew();
 		var feedTask = Task.Run(() => ParseSingle<FeedInfo>(BuildRelativeFilePath("feed_info.txt")));
 		var stopsTask = Task.Run(() => Parse<Stop>(BuildRelativeFilePath("stops.txt"), _stopFilter));
@@ -144,10 +153,15 @@ public class NetworkBuilder(string path)
 			// Trains contain non stop points
 			return stopTime.StopId.StartsWith('U');
 		}));
+		var calendarTask = Task.Run(() => ParseDict<Service>(BuildRelativeFilePath("calendar.txt"), row =>
+		{
+			var service = Service.FromRow(row);
+			return (service.ServiceId, service);
+		}));
 
 		try
 		{
-			await Task.WhenAll(feedTask, stopsTask, routesTask, tripsTask, stopTimesTask);
+			await Task.WhenAll(feedTask, stopsTask, routesTask, tripsTask, stopTimesTask, calendarTask);
 		}
 		catch (Exception e)
 		{
@@ -157,6 +171,7 @@ public class NetworkBuilder(string path)
 
 		UtmCoordinateBuilder.AssignUtmCoordinate(stopsTask.Result);
 		var stopGroups = GenerateStopGroups(stopsTask.Result);
+		ConnectServicesWithTrips(tripsTask.Result, calendarTask.Result);
 		FillTripsWithStopTimes(tripsTask.Result, stopTimesTask.Result);
 		var stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
 		var nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result, stops));
@@ -173,11 +188,19 @@ public class NetworkBuilder(string path)
 		stopwatch.Stop();
 
 		logger.LogInformation(
-			"Gtfs data successfully parsed in {} milliseconds\n\tStops: {}\n\tRoutes: {}\n\tTrips: {}\n\tStopTimes: {}",
+			"Gtfs data successfully parsed in {} milliseconds\n\tStops: {}\n\tRoutes: {}\n\tTrips: {}\n\tStopTimes: {}\n\tNodes: {}",
 			stopwatch.ElapsedMilliseconds, stopsTask.Result.Count, routesTask.Result.Count, tripsTask.Result.Count,
-			stopTimesTask.Result.Count);
+			stopTimesTask.Result.Count, nodes.Count);
 
 		return network;
+	}
+
+	private static void ConnectServicesWithTrips(IDictionary<string, Trip> trips, IDictionary<string, Service> services)
+	{
+		foreach (var (_, trip) in trips)
+		{
+			trip.Service = services[trip.ServiceId];
+		}
 	}
 
 	private string BuildRelativeFilePath(string fileName)
@@ -185,7 +208,7 @@ public class NetworkBuilder(string path)
 		return Path.Combine(path, "Prague", fileName);
 	}
 
-	private static readonly Trip _waiting = new Trip("0", "1111111", "waiting", "Čekačka");
+	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.Walking());
 
 	private static Dictionary<string, List<Node>> GenerateStopNodes(IList<Node> nodes)
 	{
@@ -214,7 +237,7 @@ public class NetworkBuilder(string path)
 			n.Sort(new TimeNodeComparer());
 			for (var i = 0; i < n.Count - 1; i++)
 			{
-				nodes[n[i].InternalId].AddEdge(nodes[n[i+1].InternalId], _waiting);
+				nodes[n[i].InternalId].AddEdge(nodes[n[i + 1].InternalId], _waiting);
 			}
 		}
 
