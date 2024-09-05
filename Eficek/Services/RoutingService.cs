@@ -3,6 +3,22 @@ using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
+public struct SearchConnectionDuration(int seconds, int dayCompensation)
+{
+	public int Seconds = seconds;
+	public int DayCompensation = dayCompensation;
+}
+
+public class SearchConnectionDurationComparer : IComparer<SearchConnectionDuration>
+{
+	public int Compare(SearchConnectionDuration x, SearchConnectionDuration y)
+	{
+		var xSec = x.Seconds + x.DayCompensation * 86400;
+		var ySec = y.Seconds + y.DayCompensation * 86400;
+		return xSec.CompareTo(ySec);
+	}
+}
+
 public class RoutingService(NetworkService networkService, ILogger<RoutingService> logger)
 {
 	/// <summary>
@@ -15,7 +31,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	public List<Node> Search(StopGroup from, StopGroup to, DateTime start)
 	{
 		var network = networkService.Network;
-		var queue = new PriorityQueue<Node, int>();
+		var queue = new PriorityQueue<Node, SearchConnectionDuration>(new SearchConnectionDurationComparer());
 
 		var backTrack = new Node?[network.Nodes.Count];
 		var times = new int[network.Nodes.Count];
@@ -29,11 +45,10 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
 			if (node == null)
 				continue; // Stop doesn't have any nodes 
-			queue.Enqueue(node, 0); // priority will be travel time
+			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
 			times[node.InternalId] = 0;
 		}
-
-
+		
 		var destinationNodeId = -1;
 		while (queue.Count > 0)
 		{
@@ -44,7 +59,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			
 			// logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
 			
-			if (node.S == Node.State.InStop && to.Stops.Contains(node.Stop))
+			if (node.S != Node.State.OnBoard && to.Stops.Contains(node.Stop))
 			{
 				destinationNodeId = node.InternalId;
 				break;
@@ -54,13 +69,18 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			{
 				var next = node.Edges[i].Node;
 				var internalId = next.InternalId;
+				// over midnight
+				if (next.Time < node.Time)
+				{
+					continue;
+				}
 				var edgeTime = next.Time - node.Time;
-				var nextNodeTime = priority + edgeTime;
-				if (times[internalId] != int.MaxValue || nextNodeTime > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
+				var nextNodeTime = new SearchConnectionDuration(priority.Seconds + edgeTime, 0);
+				if (times[internalId] != int.MaxValue || nextNodeTime.Seconds > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
 					continue; // ignore if visited earlier
 				backTrack[internalId] = node;
-				times[internalId] = nextNodeTime;
-				queue.Enqueue(next, next.Time);
+				times[internalId] = nextNodeTime.Seconds;
+				queue.Enqueue(next, new SearchConnectionDuration(next.Time, 0));
 			}
 		}
 
@@ -97,12 +117,12 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		var stopNodes = new List<(int, List<Node>)>();
 		foreach (var stop in stopGroup.Stops)
 		{
-			if (!networkService.Network.StopNodes.TryGetValue(stop.StopId, out var nodes))
+			if (!networkService.Network.StopNodes.TryGetValue(stop, out var nodes))
 			{
 				continue;
 			}
 
-			stopNodes.Add((IndexOfFirstAfter(nodes, now.Hour * 60 + now.Minute + now.Second), nodes));
+			stopNodes.Add((NodeSearch.IndexOfFirstAfter(nodes, now.Hour * 60 + now.Minute + now.Second), nodes));
 		}
 
 		var candidates = new List<Edge>();
@@ -167,51 +187,8 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 
 	private Node? FirstStopNodeAfter(Stop stop, int time)
 	{
-		return networkService.Network.StopNodes.TryGetValue(stop.StopId, out var nodes)
-			? FirstAfter(nodes, time)
+		return networkService.Network.StopNodes.TryGetValue(stop, out var nodes)
+			? NodeSearch.FirstAfter(nodes, time)
 			: null; // This stop does not have any nodes
-	}
-
-	private static Node? FirstAfter(List<Node> nodes, int time)
-	{
-		var idx = IndexOfFirstAfter(nodes, time);
-		return idx == -1 ? null : nodes[idx];
-	}
-
-	/// <summary>
-	/// Find the first Node in `nodes` whose time is greater than `time` in log(nodes).
-	/// </summary>
-	/// <param name="nodes">Nodes for a stop that are sorted by time</param>
-	/// <param name="time">In seconds from the midnight</param>
-	/// <returns>Index of the first Node. It returns 0 if a Node is a day later. -1 if no such Node exists.</returns>
-	private static int IndexOfFirstAfter(List<Node> nodes, int time)
-	{
-		var l = 0;
-		var r = nodes.Count - 1;
-		var closestAt = -1;
-		while (l <= r)
-		{
-			var mid = (l + r) / 2;
-			var node = nodes[mid];
-			if (node.Time >= time)
-			{
-				// We always keep a node that has higher time than time
-				// closest = node;
-				closestAt = mid;
-				r = mid - 1;
-			}
-			else
-			{
-				l = mid + 1;
-			}
-		}
-
-		// handle close midnight search
-		if (closestAt == -1 && nodes.Count > 0)
-		{
-			return 0;
-		}
-
-		return closestAt;
 	}
 }

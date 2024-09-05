@@ -11,7 +11,7 @@ public class Network
 	// List inside needs also to be frozen
 	public FrozenDictionary<(int, int), List<StopGroup>> NearbyStopGroups;
 	public ReadOnlyCollection<Node> Nodes;
-	public FrozenDictionary<string, List<Node>> StopNodes;
+	public FrozenDictionary<Stop, List<Node>> StopNodes;
 
 	public string FindStops(string stopGroupId)
 	{

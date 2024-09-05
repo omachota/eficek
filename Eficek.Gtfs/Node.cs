@@ -4,7 +4,8 @@ public class Node(int internalId, Stop stop, int time, Node.State s)
 {
 	public enum State
 	{
-		InStop,
+		ArrivedInStop,
+		DepartingFromStop,
 		OnBoard,
 	}
 

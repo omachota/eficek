@@ -106,7 +106,7 @@ public class NetworkBuilder(string path)
 				{
 					previous.AddEdge(departure, trip); // Connect last dep (now last arr) with arr
 					var getOff = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
-						Node.State.InStop);
+						Node.State.ArrivedInStop);
 					departure.AddEdge(getOff, trip); // Get off the trip					
 				}
 
@@ -115,7 +115,7 @@ public class NetworkBuilder(string path)
 					break; // This is last stopTime for a trip. No need to create dep node
 				}
 
-				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.InStop);
+				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.DepartingFromStop);
 				getOn.AddEdge(departure, trip); // Boarding
 
 				// connect the first boarding with following stop if previous == null, otherwise use departure
@@ -175,6 +175,8 @@ public class NetworkBuilder(string path)
 		FillTripsWithStopTimes(tripsTask.Result, stopTimesTask.Result);
 		var stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
 		var nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result, stops));
+		var stopNodes = BuildAndConnectStopNodes(nodes);
+		AddPedestrianEdges(stopNodes, CalculateNearbyStops(stopsTask.Result));
 
 		var network = new Network
 		{
@@ -182,7 +184,7 @@ public class NetworkBuilder(string path)
 			Stops = stops,
 			StopGroups = stopGroups.ToFrozenDictionary(),
 			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary(),
-			StopNodes = GenerateStopNodes(nodes).ToFrozenDictionary()
+			StopNodes = stopNodes.ToFrozenDictionary()
 		};
 
 		stopwatch.Stop();
@@ -195,6 +197,26 @@ public class NetworkBuilder(string path)
 		return network;
 	}
 
+	private Dictionary<(int, int), List<Stop>> CalculateNearbyStops(List<Stop> stops)
+	{
+		var dict = new Dictionary<(int, int), List<Stop>>();
+		for (var i = 0; i < stops.Count; i++)
+		{
+			// Since the nearly whole Czech republic is in 33U, we don't have to care about UTM rectangles now
+			var box = stops[i].UtmCoordinate.GetUtmBox();
+			if (dict.TryGetValue(box, out var nearbyStopGroups))
+			{
+				nearbyStopGroups.Add(stops[i]);
+			}
+			else
+			{
+				dict[box] = [stops[i]];
+			}
+		}
+
+		return dict;
+	}
+
 	private static void ConnectServicesWithTrips(IDictionary<string, Trip> trips, IDictionary<string, Service> services)
 	{
 		foreach (var (_, trip) in trips)
@@ -203,41 +225,122 @@ public class NetworkBuilder(string path)
 		}
 	}
 
+	private struct PedestrianConnectionToStop(Stop stop, int duration)
+	{
+		/// <summary>
+		/// Connection destination
+		/// </summary>
+		public readonly Stop Stop = stop;
+
+		/// <summary>
+		/// Duration in seconds
+		/// </summary>
+		public readonly int Duration = duration;
+	}
+
+	private static List<PedestrianConnectionToStop> GetNearbyStopsWithWalkDuration(
+		Stop stop, IDictionary<(int, int), List<Stop>> boxes)
+	{
+		var utm = stop.UtmCoordinate;
+		var (eBox, nBox) = utm.GetUtmBox();
+
+		var nearby = new List<PedestrianConnectionToStop>();
+
+		for (var i = 0; i < Constants.Neighbours.Length; i++)
+		{
+			// check neighbour box
+			if (!boxes.TryGetValue(
+				    (eBox + Constants.Neighbours[i].Item1, nBox + Constants.Neighbours[i].Item2),
+				    out var candidates))
+			{
+				continue;
+			}
+
+			// iterate over stopGroups in neighbour box
+			for (var j = 0; j < candidates.Count; j++)
+			{
+				var distance = candidates[j].UtmCoordinate.Manhattan(utm);
+				if (distance <= Constants.MaxStopWalkDistance && candidates[j].StopId != stop.StopId)
+				{
+					nearby.Add(new PedestrianConnectionToStop(candidates[j], (int)(distance / Constants.WalkingSpeed)));
+				}
+			}
+		}
+
+		return nearby;
+	}
+
+	private static readonly Trip _pedestrianConnection = new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"));
+
+	private static void AddPedestrianEdges(IDictionary<Stop, List<Node>> stopNodes,
+	                                       IDictionary<(int, int), List<Stop>> boxes)
+	{
+		foreach (var (stop, nodes) in stopNodes)
+		{
+			var nearby = GetNearbyStopsWithWalkDuration(stop, boxes);
+			for (var i = 0; i < nearby.Count; i++)
+			{
+				for (var j = 0; j < nodes.Count; j++)
+				{
+					if (nodes[j].S != Node.State.ArrivedInStop)
+					{
+						continue;
+					}
+					if (!stopNodes.TryGetValue(nearby[i].Stop, out var destinationCandidates))
+					{
+						continue;
+					}
+					
+					var dest = NodeSearch.FirstAfter(destinationCandidates, nodes[j].Time + nearby[i].Duration);
+					if (dest == null)
+					{
+						// Should we ignore it?
+						continue;
+					}
+					
+					// Console.WriteLine($"Connecting {nodes[j].Stop.StopId} {nodes[j].Time} {nodes[j].S} with {dest.Stop.StopId} {dest.Time} {dest.S}");
+
+					nodes[j].AddEdge(dest, _pedestrianConnection);
+				}
+			}
+		}
+	}
+
 	private string BuildRelativeFilePath(string fileName)
 	{
 		return Path.Combine(path, "Prague", fileName);
 	}
 
-	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.Walking());
+	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"));
 
-	private static Dictionary<string, List<Node>> GenerateStopNodes(IList<Node> nodes)
+	private static Dictionary<Stop, List<Node>> BuildAndConnectStopNodes(IList<Node> nodes)
 	{
-		var stopNodes = new Dictionary<string, List<Node>>();
+		var stopNodes = new Dictionary<Stop, List<Node>>();
 
 		for (var i = 0; i < nodes.Count; i++)
 		{
-			if (nodes[i].S != Node.State.InStop)
+			if (nodes[i].S == Node.State.OnBoard)
 			{
-				continue; // Skip nodes from which we can't start
+				continue; // Skip non-stop nodes - they should not be connected with other stop nodes
 			}
 
-			if (stopNodes.TryGetValue(nodes[i].Stop.StopId, out var list))
+			if (stopNodes.TryGetValue(nodes[i].Stop, out var list))
 			{
 				list.Add(nodes[i]);
 			}
 			else
 			{
-				stopNodes[nodes[i].Stop.StopId] = [nodes[i]];
+				stopNodes[nodes[i].Stop] = [nodes[i]];
 			}
 		}
 
-		// Waiting edges
 		foreach (var (_, n) in stopNodes)
 		{
 			n.Sort(new TimeNodeComparer());
 			for (var i = 0; i < n.Count - 1; i++)
 			{
-				nodes[n[i].InternalId].AddEdge(nodes[n[i + 1].InternalId], _waiting);
+				n[i].AddEdge(n[i + 1], _waiting);
+				// nodes[n[i].InternalId].AddEdge(nodes[n[i + 1].InternalId], _waiting);
 			}
 		}
 
@@ -272,7 +375,7 @@ public class NetworkBuilder(string path)
 		var dict = new Dictionary<(int, int), List<StopGroup>>();
 		foreach (var (_, stopGroup) in stopGroups)
 		{
-			// Since the whole Czech republic is in 33U, we don't have to care about UTM rectangles now
+			// Since the nearly whole Czech republic is in 33U, we don't have to care about UTM rectangles now
 			var box = stopGroup.UtmCoordinate.GetUtmBox();
 			if (dict.TryGetValue(box, out var nearbyStopGroups))
 			{

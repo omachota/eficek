@@ -18,12 +18,12 @@ public class Service(
 	DateOnly endDate)
 	: IFromRow<Service>
 {
-	public static Service Walking()
+	public static Service AllDays(string name)
 	{
 		var today = DateTime.Today;
 		var date = new DateOnly(today.Year, today.Month, today.Day);
 		date.AddMonths(1);
-		return new Service("1111111-walk", true, true, true, true, true, true, true, date, date.AddMonths(1));
+		return new Service(name, true, true, true, true, true, true, true, date, date.AddMonths(1));
 	}
 
 	public readonly string ServiceId = serviceId;

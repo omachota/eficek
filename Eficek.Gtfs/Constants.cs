@@ -5,15 +5,21 @@ public static class Constants
 	/// <summary>
 	/// Describes maximal walking distance between stops in metres
 	/// </summary>
-	public const double MaxStopWalkDistance = 1000;
+	public const double MaxStopWalkDistance = 500;
 
 	/// <summary>
-	/// Normal walk speed in km/h
+	/// Normal walk speed in m/s
 	/// </summary>
-	public const double WalkingSpeed = 4;
+	public const double WalkingSpeed = 1.4;
 
 	/// <summary>
 	/// Time it takes to leave a bus (in seconds)
 	/// </summary>
 	public const int MinTransferTime = 60;
+
+	/// <summary>
+	/// Helps with search of nearby stations
+	/// </summary>
+	public static readonly (int, int)[] Neighbours =
+		[(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)];
 }
