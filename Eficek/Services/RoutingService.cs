@@ -42,8 +42,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				throw new UnreachableException();
 			}
 			
-			logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
-
+			// logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
 			
 			if (node.S == Node.State.InStop && to.Stops.Contains(node.Stop))
 			{
@@ -57,11 +56,11 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				var internalId = next.InternalId;
 				var edgeTime = next.Time - node.Time;
 				var nextNodeTime = priority + edgeTime;
-				if (nextNodeTime > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
+				if (times[internalId] != int.MaxValue || nextNodeTime > times[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
 					continue; // ignore if visited earlier
 				backTrack[internalId] = node;
 				times[internalId] = nextNodeTime;
-				queue.Enqueue(next, nextNodeTime);
+				queue.Enqueue(next, next.Time);
 			}
 		}
 
