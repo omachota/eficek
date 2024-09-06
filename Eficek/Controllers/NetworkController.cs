@@ -1,10 +1,21 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace Eficek.Controllers;
 
-public class NetworkController
+public class Credentials
+{
+	public string Username { get; }
+	public string Password { get; }
+}
+
+[Route("admin")]
+[ApiController]
+public class NetworkController(ILogger<NetworkController> logger)
 {
 	// Rights - token
-	public async Task Update()
+	[HttpPost("Update")]
+	public async Task Update([FromBody] Credentials credentials)
 	{
-		
+		logger.LogInformation("{} {}", credentials.Username, credentials.Password);
 	}
 }

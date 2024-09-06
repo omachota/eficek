@@ -142,7 +142,11 @@ public class NetworkBuilder(string path)
 		var stopwatch = Stopwatch.StartNew();
 		var feedTask = Task.Run(() => ParseSingle<FeedInfo>(BuildRelativeFilePath("feed_info.txt")));
 		var stopsTask = Task.Run(() => Parse<Stop>(BuildRelativeFilePath("stops.txt"), _stopFilter));
-		var routesTask = Task.Run(() => Parse<Route>(BuildRelativeFilePath("routes.txt")));
+		var routesTask = Task.Run(() => ParseDict<Route>(BuildRelativeFilePath("routes.txt"), row =>
+		{
+			var route = Route.FromRow(row);
+			return (route.RouteId, route);
+		}));
 		var tripsTask = Task.Run(() => ParseDict<Trip>(BuildRelativeFilePath("trips.txt"), row =>
 		{
 			var t = Trip.FromRow(row);
@@ -177,6 +181,7 @@ public class NetworkBuilder(string path)
 		var nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result, stops));
 		var stopNodes = BuildAndConnectStopNodes(nodes);
 		AddPedestrianEdges(stopNodes, CalculateNearbyStops(stopsTask.Result));
+		AssignRoutesToTrips(routesTask.Result, tripsTask.Result);
 
 		var network = new Network
 		{
@@ -195,6 +200,14 @@ public class NetworkBuilder(string path)
 			stopTimesTask.Result.Count, nodes.Count);
 
 		return network;
+	}
+
+	private static void AssignRoutesToTrips(Dictionary<string, Route> routes, Dictionary<string,Trip> trips)
+	{
+		foreach (var (_, trip) in trips)
+		{
+			trip.Route = routes[trip.RouteId];
+		}
 	}
 
 	private Dictionary<(int, int), List<Stop>> CalculateNearbyStops(List<Stop> stops)
@@ -270,7 +283,7 @@ public class NetworkBuilder(string path)
 		return nearby;
 	}
 
-	private static readonly Trip _pedestrianConnection = new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"));
+	private static readonly Trip _pedestrianConnection = new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"), Kind.Walking);
 
 	private static void AddPedestrianEdges(IDictionary<Stop, List<Node>> stopNodes,
 	                                       IDictionary<(int, int), List<Stop>> boxes)
@@ -311,7 +324,7 @@ public class NetworkBuilder(string path)
 		return Path.Combine(path, "Prague", fileName);
 	}
 
-	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"));
+	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"), Kind.Waiting);
 
 	private static Dictionary<Stop, List<Node>> BuildAndConnectStopNodes(IList<Node> nodes)
 	{
