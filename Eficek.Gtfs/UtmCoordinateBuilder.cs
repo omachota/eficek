@@ -89,7 +89,7 @@ public static partial class UtmCoordinateBuilder
 	/// </summary>
 	/// <param name="coordinate"></param>
 	/// <returns></returns>
-	public static UtmCoordinate Convert(Coordinate coordinate)
+	public static UtmCoordinate ToUtm(this Coordinate coordinate)
 	{
 		return ConvertUnsafe(coordinate, (UIntPtr)DetermineZone(coordinate));
 	}

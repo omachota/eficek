@@ -42,7 +42,7 @@ pub fn convert_array(coordinates: &[Coordinate], utm_coordinates: &mut [UtmCoord
     // Longitude, Latitude / Easting, Northing
     for (i, coordinate) in coordinates.iter().enumerate()
     {
-        (utm_coordinates[i].easting, utm_coordinates[i].northing) = projection.convert((coordinate.longitude, coordinate.latitude)).expect("failed to convert coordinate");
+        (utm_coordinates[i].easting, utm_coordinates[i].northing) = projection.convert((coordinate.latitude, coordinate.longitude)).expect("failed to convert coordinate");
         utm_coordinates[i].zone_number = zone as i32;
     }
 }
@@ -52,7 +52,7 @@ pub fn convert(coordinate: &Coordinate, zone: usize) -> UtmCoordinate {
     let projection = get_proj(coordinate, zone);
 
     // Longitude, Latitude / Easting, Northing
-    let (easting, northing) = projection.convert((coordinate.longitude, coordinate.latitude)).expect("failed to convert coordinate");
+    let (easting, northing) = projection.convert((coordinate.latitude, coordinate.longitude)).expect("failed to convert coordinate");
     UtmCoordinate {
         northing,
         easting,

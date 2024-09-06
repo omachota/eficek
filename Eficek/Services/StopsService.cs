@@ -12,7 +12,7 @@ public class StopsService(NetworkService networkService)
 
 	public IReadOnlyList<NearbyStopGroup> GetNearby(Coordinate coordinate)
 	{
-		var utm = UtmCoordinateBuilder.Convert(coordinate);
+		var utm = coordinate.ToUtm();
 		var (eBox, nBox) = utm.GetUtmBox();
 
 		var nearby = new List<NearbyStopGroup>();
