@@ -2,7 +2,7 @@ using Eficek.Gtfs;
 
 namespace Eficek.Services;
 
-public class NetworkSingletonService(ILogger<NetworkSingletonService> logger)
+public class NetworkSingletonService(ILogger<NetworkSingletonService> logger, IConfiguration configuration)
 {
 	private readonly SemaphoreSlim _lock = new(1);
 	private Network _network = null!;
@@ -35,6 +35,9 @@ public class NetworkSingletonService(ILogger<NetworkSingletonService> logger)
 
 		logger.LogInformation("API started to update");
 		IsBeingUpdated = true;
+		var pragueGtfs = new PragueGtfs(logger, configuration, path);
+		await pragueGtfs.Download();
+		
 		var networkBuilder = new NetworkBuilder(path);
 		var network = await networkBuilder.BuildAsync(logger);
 

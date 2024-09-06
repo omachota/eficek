@@ -1,4 +1,3 @@
-using Eficek.Gtfs;
 using Eficek.Services;
 using Microsoft.OpenApi.Models;
 
@@ -37,8 +36,6 @@ app.MapControllers();
 var gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
 Directory.CreateDirectory(gtfsCoreDirectory);
 
-var pragueGtfs = new PragueGtfs(app.Logger, app.Configuration, gtfsCoreDirectory);
-await pragueGtfs.Download(); // wait for the first download
 var networkSingletonService = app.Services.GetService<NetworkSingletonService>();
 if (networkSingletonService == null)
 	throw new NullReferenceException($"Failed to get {nameof(NetworkSingletonService)}");

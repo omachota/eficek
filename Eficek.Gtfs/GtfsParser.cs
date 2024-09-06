@@ -28,16 +28,6 @@ public class GtfsParser(GtfsDescription description, ILogger logger)
 		return data;
 	}
 
-	protected List<Agency> ParseAgencies()
-	{
-		return Parse<Agency>(description.Agency);
-	}
-
-	protected List<Stop> ParseStops()
-	{
-		return Parse<Stop>(description.Stops);
-	}
-
 	public FeedInfo ParseFeedInfo()
 	{
 		return Parse<FeedInfo>(description.FeedInfo)[0];
