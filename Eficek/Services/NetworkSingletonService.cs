@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Eficek.Gtfs;
 
 namespace Eficek.Services;
@@ -12,6 +13,8 @@ public class NetworkSingletonService(ILogger<NetworkSingletonService> logger)
 		return _network;
 	}
 
+	public bool IsBeingUpdated { get; private set; }
+
 	// Should be locked while updating to prevent simultaneous updates
 	public async ValueTask Update(string path)
 	{
@@ -20,11 +23,15 @@ public class NetworkSingletonService(ILogger<NetworkSingletonService> logger)
 			logger.LogWarning("Network update was declined due to other ongoing update");
 			return;
 		}
-		
+
+		logger.LogInformation("API started to update");
+		IsBeingUpdated = true;
 		var networkBuilder = new NetworkBuilder(path);
 		var network = await networkBuilder.BuildAsync(logger);
-		
+
 		Interlocked.Exchange(ref _network, network);
+		IsBeingUpdated = false;
+		logger.LogInformation("Update finished");
 		_lock.Release();
 	}
 }
