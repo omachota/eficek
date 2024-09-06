@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Eficek.Gtfs;
+using Eficek.Infrastructure;
 
 namespace Eficek.Services;
 
@@ -116,20 +117,35 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		return (connectionNodes, takenEdges);
 	}
 
+	private class IndexToStopNodes(int index, List<Node> nodes)
+	{
+		public int Index = index;
+		public readonly List<Node> Nodes = nodes;
+
+		public void Deconstruct(out int idx, out List<Node> nodes)
+		{
+			idx = Index;
+			nodes = Nodes;
+		}
+	}
+
 	/// <summary>
-	/// Find all departures from stopGroup. The number of departures is limited by `maxEntries` and tomorrow 23:59:59.
+	/// Find all departures from stopGroup. The number of departures is limited by `maxEntries` and today 23:59:59.
 	/// </summary>
 	/// <param name="stopGroup"></param>
 	/// <param name="maxEntries"></param>
 	/// <returns>Returns sorted departures - from earliest to latest</returns>
 	/// <exception cref="NotImplementedException"></exception>
-	public List<Node> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
+	public List<(Node, Edge, int)> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
 	{
-		var tomorrow = DateTime.Today.Add(new TimeSpan(1, 23, 59, 59));
-		var results = new List<Node>();
 		var now = DateTime.Now;
+		var secondsNow = now.Hour * 3600 + now.Minute * 60 + now.Second;
+		var day = now.DayOfWeek;
+		var dayCompensation = 0;
 
-		var stopNodes = new List<(int, List<Node>)>();
+		logger.LogInformation("stops: {}", stopGroup.Stops.Count);
+		// We need Node + Edge => Node for departure time and Edge for Trip, int for day compensation
+		var candidates = new List<(Node, Edge, int)>();
 		foreach (var stop in stopGroup.Stops)
 		{
 			if (!networkService.Network.StopNodes.TryGetValue(stop, out var nodes))
@@ -137,39 +153,78 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				continue;
 			}
 
-			stopNodes.Add((NodeSearch.IndexOfFirstAfter(nodes, now.Hour * 60 + now.Minute + now.Second), nodes));
-		}
-
-		var candidates = new List<Edge>();
-		var cmp = new EdgeDestinationTimeComparer();
-		while (results.Count < maxEntries)
-		{
-			var count = MinimalCandidates(stopNodes, candidates, cmp);
-			if (count == 0)
+			var idx = NodeSearch.IndexOfFirstAfter(nodes, secondsNow);
+			if (idx == -1 && nodes.Count > 0)
 			{
-				break;
+				// TODO : increment day
+				day = day.NextDay();
+				++dayCompensation;
 			}
 
-			for (var i = 0; i < candidates.Count; i++)
+			if (idx == 0 && nodes.Count > 0)
 			{
-				if (results.Count >= maxEntries)
+				// TODO : should not be skipped
+				continue;
+			}
+
+			// iterate over all nodes in stop from time and for each node over each edge to detect departures
+			var dayIterations = 2 - dayCompensation;
+			for (var d = 0; d < dayIterations; d++)
+			{
+				for (var i = idx; i < nodes.Count; i++)
 				{
-					goto end;
+					for (var j = 0; j < nodes[i].Edges.Count; j++)
+					{
+						var edge = nodes[i].Edges[j];
+						// TODO : DayOfWeek might be changed above
+						if (nodes[i].S == Node.State.DepartingFromStop && edge.Node.S == Node.State.OnBoard &&
+						    edge.OperatesOn(day))
+						{
+							candidates.Add((nodes[i], edge, dayCompensation));
+						}
+					}
 				}
-
-				// results.Add(candidates[i]);
+				
+				idx = 0;
+				day = day.NextDay();
+				++dayCompensation;
 			}
 
-			candidates.Clear();
+
+			logger.LogInformation("idx: {}, nodes: {}, time: {}, stop: {}", idx, nodes.Count, secondsNow, stop.StopId);
+			logger.LogInformation("idx node time: {}", nodes[idx].Time);
 		}
 
-		end:
+		return candidates.OrderBy(x => x.Item3).ThenBy(x => x.Item1.Time).Take(maxEntries).ToList();
 
-		throw new NotImplementedException();
+		// var candidates = new List<Edge>();
+		// var cmp = new EdgeDestinationTimeComparer();
+		// while (results.Count < maxEntries)
+		// {
+		// 	// No candidates => hit end
+		// 	var count = MinimalCandidates(stopNodes, candidates, cmp);
+		// 	logger.LogInformation("mincandidates: {}", count);
+		// 	if (count == 0)
+		// 	{
+		// 		break;
+		// 	}
+		//
+		// 	for (var i = 0; i < candidates.Count; i++)
+		// 	{
+		// 		if (results.Count >= maxEntries)
+		// 		{
+		// 			goto end;
+		// 		}
+		//
+		// 		results.Add(candidates[i]);
+		// 	}
+		//
+		// 	candidates.Clear();
+		// }
 	}
 
 
-	private static int MinimalCandidates(List<(int, List<Node>)> stopNodes, List<Edge> candidates, IComparer<Edge> cmp)
+	private static int MinimalCandidates(List<IndexToStopNodes> stopNodes, List<Edge> candidates, IComparer<Edge> cmp)
 	{
 		// TODO : change List<> to LinkedList<>
 		for (var i = 0; i < stopNodes.Count; i++)
@@ -183,16 +238,15 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			var edges = nodes[idx].Edges;
 			for (var j = 0; j < edges.Count; j++)
 			{
-				if (edges[j].Node.S != Node.State.OnBoard)
+				// Consider only departures from a stop
+				// TODO : trip cantakeedge
+				if (edges[j].Node.S == Node.State.OnBoard && nodes[idx].S == Node.State.DepartingFromStop)
 				{
-					// Skip non boarding edges
-					continue;
+					candidates.Add(edges[j]);
 				}
-
-				candidates.Add(edges[j]);
 			}
 
-			// stopNodes[i].Item1 = ++idx;
+			++stopNodes[i].Index;
 		}
 
 		candidates.Sort(cmp);
