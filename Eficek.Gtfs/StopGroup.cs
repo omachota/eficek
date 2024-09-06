@@ -10,7 +10,8 @@ public class StopGroup(string groupName)
 {
 	private bool _frozen;
 	private Coordinate _coordinate;
-	private UtmCoordinate _utmCoordinate;
+	// ZoneNumber has to be set not to raise exception
+	private UtmCoordinate _utmCoordinate = new() {ZoneNumber = 33};
 
 	public readonly HashSet<Stop> Stops = [];
 
@@ -32,7 +33,7 @@ public class StopGroup(string groupName)
 	{
 		get
 		{
-			if (_frozen)
+			if (!_frozen)
 			{
 				throw new UnFrozenException("Access to `UtmCoordinate` is allowed after freezing");
 			}
@@ -54,8 +55,8 @@ public class StopGroup(string groupName)
 
 		Stops.Add(stop);
 		Name = stop.StopName;
-		Coordinate += stop.Coordinate;
-		UtmCoordinate += stop.UtmCoordinate;
+		_coordinate += stop.Coordinate;
+		_utmCoordinate += stop.UtmCoordinate;
 		return true;
 	}
 
