@@ -354,14 +354,14 @@ public class NetworkBuilder(string path)
 		return stopNodes;
 	}
 
-	public Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
+	public static Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
 	{
-		var dict = new Dictionary<string, StopGroup>();
+		var map = new Dictionary<string, StopGroup>();
 		for (var i = 0; i < stops.Count; i++)
 		{
 			// Todo : GroupName should be precomputed when creating a stop?
 			var groupName = stops[i].GroupName();
-			if (dict.TryGetValue(groupName, out var stopGroup))
+			if (map.TryGetValue(groupName, out var stopGroup))
 			{
 				stopGroup.AddStop(stops[i]);
 			}
@@ -369,11 +369,16 @@ public class NetworkBuilder(string path)
 			{
 				var st = new StopGroup(groupName);
 				st.AddStop(stops[i]);
-				dict[groupName] = st;
+				map[groupName] = st;
 			}
 		}
 
-		return dict;
+		foreach (var (_, stopGroup) in map)
+		{
+			stopGroup.Freeze();
+		}
+
+		return map;
 	}
 
 	private Dictionary<(int, int), List<StopGroup>> AssignStopGroupsToSquares(

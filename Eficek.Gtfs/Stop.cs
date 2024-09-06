@@ -18,8 +18,8 @@ public class Stop(
 	int? zoneRegionType)
 	: IFromRow<Stop>
 {
-	public string StopId = stopId;
-	public string StopName { get; } = stopName;
+	public readonly string StopId = stopId;
+	public readonly string StopName = stopName;
 
 	public Coordinate Coordinate = coordinate;
 	public UtmCoordinate UtmCoordinate;
