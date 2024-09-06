@@ -1,5 +1,8 @@
+using System.Reflection;
+using System.Xml.XPath;
 using Eficek.Gtfs;
 using Eficek.Services;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +16,12 @@ builder.Services.AddScoped<RoutingService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+	options.SwaggerDoc("v1", new OpenApiInfo {Title = "Eficek"});
+	var filePath = Path.Combine(AppContext.BaseDirectory, "Eficek.xml");
+	options.IncludeXmlComments(filePath);
+});
 
 var app = builder.Build();
 

@@ -16,6 +16,9 @@ public class RoutingController(StopsService stopsService, RoutingService routing
 	/// <param name="start">ISO8601 date</param>
 	/// <returns>Not found if either from or to doesn't exist</returns>
 	[HttpGet("Search")]
+	[ProducesResponseType(typeof(Connection), 200)]
+	[ProducesResponseType(typeof(string), 404)]
+
 	public IActionResult Search(string from, string to, DateTime start)
 	{
 		var fs = stopsService.TryGet(from);

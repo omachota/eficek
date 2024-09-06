@@ -17,18 +17,24 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 	}
 
 	[HttpGet("GetNearby")]
+	[ProducesResponseType(typeof(List<NearbyStopGroup>), 200)]
+
 	public IEnumerable<NearbyStopGroup> GetNearby(double lat, double lon)
 	{
 		return stopsService.GetNearby(new Coordinate(lat, lon));
 	}
 
 	[HttpGet("Search")]
+	[ProducesResponseType(typeof(List<StopGroupMatch>), 200)]
 	public IEnumerable<StopGroupMatch> Search(string value)
 	{
 		return value.Length < 3 ? Array.Empty<StopGroupMatch>() : stopsService.Search(value, -1);
 	}
 
 	[HttpGet("Departures")]
+	[ProducesResponseType(typeof(List<Node>), 200)]
+	[ProducesResponseType(typeof(string), 404)]
+
 	public IActionResult Departures(string stopId) // or stopGroupId?
 	{
 		// TODO : convert stopId to stopGroupId

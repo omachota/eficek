@@ -5,6 +5,10 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <!--    generate docs for swagger    -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!--    disable warning for undocumented classes    -->
+        <NoWarn>1591</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Eficek.Gtfs\Eficek.Gtfs.csproj" />
+        <ProjectReference Include="..\Eficek.Gtfs\Eficek.Gtfs.csproj"/>
     </ItemGroup>
 
 </Project>
