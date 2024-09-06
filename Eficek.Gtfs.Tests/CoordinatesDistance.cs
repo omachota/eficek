@@ -11,6 +11,10 @@ public class CoordinatesDistance
 	{
 		var coord1 = new Coordinate(lat1, lon1);
 		var coord2 = new Coordinate(lat2, lon2);
-		coord1.Manhattan(coord2);
+
+		var utm1 = coord1.ToUtm();
+		var utm2 = coord2.ToUtm();
+
+		utm1.Manhattan(utm2);
 	}
 }

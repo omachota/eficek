@@ -128,12 +128,6 @@ public class NetworkBuilder(string path)
 		return nodes;
 	}
 
-	private readonly KeyValueSelector<Stop> _stopSelector = row =>
-	{
-		var s = Stop.FromRow(row);
-		return (s.StopId, s);
-	};
-
 	private readonly Func<Stop, bool> _stopFilter = stop => stop.ZoneRegionType is > 0;
 
 	public async Task<Network> BuildAsync(ILogger logger)
@@ -141,7 +135,7 @@ public class NetworkBuilder(string path)
 		logger.LogInformation("Started parsing gtfs data");
 		var stopwatch = Stopwatch.StartNew();
 		var feedTask = Task.Run(() => ParseSingle<FeedInfo>(BuildRelativeFilePath("feed_info.txt")));
-		var stopsTask = Task.Run(() => Parse<Stop>(BuildRelativeFilePath("stops.txt"), _stopFilter));
+		var stopsTask = Task.Run(() => Parse(BuildRelativeFilePath("stops.txt"), _stopFilter));
 		var routesTask = Task.Run(() => ParseDict<Route>(BuildRelativeFilePath("routes.txt"), row =>
 		{
 			var route = Route.FromRow(row);

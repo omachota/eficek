@@ -8,7 +8,8 @@ namespace Eficek.Services;
 public class StopsService(NetworkService networkService)
 {
 	// helps to remove code depth
-	private readonly (int, int)[] _neighbours = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)];
+	private readonly (int, int)[] _neighbours =
+		[(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)];
 
 	public IReadOnlyList<NearbyStopGroup> GetNearby(Coordinate coordinate)
 	{
@@ -33,7 +34,7 @@ public class StopsService(NetworkService networkService)
 				var distance = stopGroups[j].UtmCoordinate.Manhattan(utm);
 				if (distance <= Constants.MaxStopWalkDistance)
 				{
-					nearby.Add(new NearbyStopGroup(stopGroups[j].Name, stopGroups[j].GroupName, distance));
+					nearby.Add(NearbyStopGroup.From((distance, stopGroups[j])));
 				}
 			}
 		}

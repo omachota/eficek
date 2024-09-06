@@ -1,12 +1,8 @@
-using System.Reflection;
-using System.Xml.XPath;
 using Eficek.Gtfs;
 using Eficek.Services;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 
 builder.Services.AddSingleton<NetworkSingletonService>();
 builder.Services.AddScoped<NetworkService>();

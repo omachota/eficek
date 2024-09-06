@@ -15,7 +15,7 @@ public class RoutingController(
 	ILogger<RoutingController> logger) : ControllerBase
 {
 	/// <summary>
-	/// Toto je test
+	/// Returns connection between `from` StopGroup and `to` StopGroup
 	/// </summary>
 	/// <param name="from">StopGroup id</param>
 	/// <param name="to">StopGroup id</param>
@@ -39,20 +39,27 @@ public class RoutingController(
 			return NotFound($"StopGroup {to} not found");
 		}
 
-		// Start search 10 times. Stop if next departure is a day later than start 
+		/*
+		 * IDEA: Start search ~10 times. Stop if next departure is a day later than `start`.
+		 * This may be resources consuming. Simultaneous searching might help. And a faster algorithm.
+		 */
 
 		// we can only return the first node plus edges, because edges contain link to destination node
 		var (nodes, edges) = routingService.Search(fs, ts, start);
 
-		// TODO : handle specific cases: waiting and walking should contain from and to
 		var stops = new List<Stop>();
 		var trips = new List<Trip>();
-		// This should be written more clearly
 		var endTime = 0;
 		var startTime = nodes[0].Time;
 		// TODO : make sure that this stop exists
 		stops.Add(
 			new Stop(nodes[0].Stop.StopId, nodes[0].Stop.StopName, nodes[0].Time, nodes[0].Stop.Coordinate));
+		/*
+		 * Following code should be written more clearly
+		 * IDEA: - Group waiting into two stops that represent the start and the end of waiting
+		 *		 - Walking can be expressed as a trip with two stops. The head-sign of the trip should be set to
+		 *		   destination stop name.
+		 */
 		for (var i = 0; i < edges.Count - 1; i++)
 		{
 			var edge = edges[i];

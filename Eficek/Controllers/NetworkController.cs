@@ -21,6 +21,8 @@ public class NetworkController(NetworkSingletonService networkSingletonService, 
 	/// </summary>
 	/// <param name="credentials">Your secret username and password</param>
 	[HttpPost("Update")]
+	[ProducesResponseType(typeof(OkResult), 200)]
+	[ProducesResponseType(typeof(UnauthorizedResult), 401)]
 	public async ValueTask<IActionResult> Update([FromBody] Credentials credentials)
 	{
 		var sb = new StringBuilder();
@@ -51,6 +53,7 @@ public class NetworkController(NetworkSingletonService networkSingletonService, 
 	/// </summary>
 	/// <returns>True if API is being updated, otherwise false</returns>
 	[HttpGet("IsBeingUpdated")]
+	[ProducesResponseType(typeof(bool), 200)]
 	public bool IsBeingUpdate()
 	{
 		return networkSingletonService.IsBeingUpdated;

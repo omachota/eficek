@@ -7,7 +7,8 @@ namespace Eficek.Controllers;
 
 [Route("stops")]
 [ApiController]
-public class StopsController(NetworkService networkService, StopsService stopsService, RoutingService routingService) : ControllerBase
+public class StopsController(NetworkService networkService, StopsService stopsService, RoutingService routingService)
+	: ControllerBase
 {
 	[Obsolete("We should not allow user to get all StopGroups unless we change the amount of data")]
 	[HttpGet("GetAll")]
@@ -16,14 +17,24 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 		return networkService.Network.StopGroups.Values;
 	}
 
+	/// <summary>
+	/// Returns StopGroups that are near given `latitude` and `longitude`
+	/// </summary>
+	/// <param name="lat">Latitude between -90 and 90</param>
+	/// <param name="lon">Longitude between -180 and 180</param>
+	/// <returns></returns>
 	[HttpGet("GetNearby")]
 	[ProducesResponseType(typeof(List<NearbyStopGroup>), 200)]
-
 	public IEnumerable<NearbyStopGroup> GetNearby(double lat, double lon)
 	{
 		return stopsService.GetNearby(new Coordinate(lat, lon));
 	}
 
+	/// <summary>
+	/// Search StopGroups by StopGroup name
+	/// </summary>
+	/// <param name="value">If the length of value is less than 3, empty response is returned</param>
+	/// <returns></returns>
 	[HttpGet("Search")]
 	[ProducesResponseType(typeof(List<StopGroupMatch>), 200)]
 	public IEnumerable<StopGroupMatch> Search(string value)
@@ -31,10 +42,14 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 		return value.Length < 3 ? Array.Empty<StopGroupMatch>() : stopsService.Search(value, -1);
 	}
 
+	/// <summary>
+	/// Returns a set of departures from a StopGroup
+	/// </summary>
+	/// <param name="stopId">404 is returned if stopGroup doesn't exist</param>
+	/// <returns></returns>
 	[HttpGet("Departures")]
 	[ProducesResponseType(typeof(List<Node>), 200)]
 	[ProducesResponseType(typeof(string), 404)]
-
 	public IActionResult Departures(string stopId) // or stopGroupId?
 	{
 		// TODO : convert stopId to stopGroupId
