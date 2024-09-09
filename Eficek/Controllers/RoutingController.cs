@@ -47,6 +47,11 @@ public class RoutingController(
 		// we can only return the first node plus edges, because edges contain link to destination node
 		var (nodes, edges) = routingService.Search(fs, ts, start);
 
+		if (nodes.Count == 0)
+		{
+			return NotFound("No connection found");
+		}
+
 		var stops = new List<Stop>();
 		var trips = new List<Trip>();
 		var endTime = 0;

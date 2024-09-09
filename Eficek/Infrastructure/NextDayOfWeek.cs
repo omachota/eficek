@@ -4,6 +4,11 @@ public static class NextDayOfWeekExtension
 {
 	public static DayOfWeek NextDay(this DayOfWeek dayOfWeek)
 	{
-		return (DayOfWeek)(((int)dayOfWeek + 1) % 7);
+		return dayOfWeek.AddDays(1);
+	}
+
+	public static DayOfWeek AddDays(this DayOfWeek dayOfWeek, int days)
+	{
+		return (DayOfWeek)(((int)dayOfWeek + days) % 7);
 	}
 }
