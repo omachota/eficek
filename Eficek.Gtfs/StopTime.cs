@@ -1,9 +1,14 @@
-using System.Globalization;
 using nietras.SeparatedValues;
 
 namespace Eficek.Gtfs;
 
-public class StopTime(string tripId, int arrivalTime, int departureTime, string stopId, int stopSequence)
+public class StopTime(
+	string tripId,
+	int arrivalTime,
+	int departureTime,
+	string stopId,
+	int stopSequence,
+	double travelledDistance)
 	: IFromRow<StopTime>
 {
 	public string TripId = tripId;
@@ -11,6 +16,7 @@ public class StopTime(string tripId, int arrivalTime, int departureTime, string 
 	public int DepartureTime = departureTime;
 	public string StopId = stopId;
 	public int StopSequence = stopSequence;
+	public double TravelledDistance = travelledDistance;
 
 
 	public static StopTime FromRow(SepReader.Row row)
@@ -21,7 +27,8 @@ public class StopTime(string tripId, int arrivalTime, int departureTime, string 
 			Seconds.Parse(row["arrival_time"].ToString()),
 			Seconds.Parse(row["departure_time"].ToString()),
 			row["stop_id"].ToString(),
-			row["stop_sequence"].Parse<int>()
+			row["stop_sequence"].Parse<int>(),
+			double.Parse(row["shape_dist_traveled"].ToString())
 		);
 	}
 }

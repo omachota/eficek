@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Eficek.Gtfs;
 using Eficek.Models;
 using Eficek.Services;
@@ -179,6 +180,7 @@ public class RoutingController(
 					break;
 				case Kind.Waiting:
 					// Should not happen
+					throw new UnreachableException();
 					break;
 				default:
 					throw new ArgumentOutOfRangeException();
@@ -188,6 +190,44 @@ public class RoutingController(
 		var connection = new Connection(endTime - startTime, trips);
 
 		return Ok(connection);
+	}
+
+	[HttpGet("SearchVia")]
+	public IActionResult SearchVia(string from, string via, string to, DateTime start)
+	{
+		var fs = stopsService.TryGet(from);
+		var vs = stopsService.TryGet(via);
+		var ts = stopsService.TryGet(to);
+
+		if (fs == null)
+		{
+			return NotFound($"StopGroup {from} not found");
+		}
+
+		if (vs == null)
+		{
+			return NotFound($"StopGroup {to} not found");
+		}
+
+		if (ts == null)
+		{
+			return NotFound($"StopGroup {to} not found");
+		}
+
+		return Ok();
+	}
+
+	[HttpGet("Coverage")]
+	public IActionResult Coverage(string from, DateTime start)
+	{
+		var fs = stopsService.TryGet(from);
+
+		if (fs == null)
+		{
+			return NotFound($"StopGroup {from} not found");
+		}
+
+		return Ok();
 	}
 }
 

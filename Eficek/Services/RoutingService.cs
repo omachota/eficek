@@ -4,10 +4,18 @@ using Eficek.Infrastructure;
 
 namespace Eficek.Services;
 
-public readonly struct SearchConnectionDuration(int seconds, int dayCompensation)
+public struct SearchConnectionDuration(int seconds, int dayCompensation)
 {
+	public SearchConnectionDuration(int seconds, int dayCompensation, int boardings, double travelledDistance) : this(seconds, dayCompensation)
+	{
+		Boardings = boardings;
+		TravelledDistance = travelledDistance;
+	}
+
 	public readonly int Seconds = seconds;
 	public readonly int DayCompensation = dayCompensation;
+	public int Boardings = 0;
+	public readonly double TravelledDistance = 0;
 
 	public SearchConnectionDuration AddSeconds(int seconds)
 	{
@@ -24,23 +32,9 @@ public class SearchConnectionDurationComparer : IComparer<SearchConnectionDurati
 {
 	public int Compare(SearchConnectionDuration x, SearchConnectionDuration y)
 	{
-		return x.ToSeconds().CompareTo(y.ToSeconds());
-	}
-}
+		var cmp = x.ToSeconds().CompareTo(y.ToSeconds());
 
-public struct SearchPriority
-{
-	public int Time;
-	public int BoardingsCount;
-}
-
-public class TimeWithBoardingCountComparer : IComparer<SearchPriority>
-{
-	public int Compare(SearchPriority x, SearchPriority y)
-	{
-		var timeComparison = x.Time.CompareTo(y.Time);
-		if (timeComparison != 0) return timeComparison;
-		return x.BoardingsCount.CompareTo(y.BoardingsCount);
+		return cmp == 0 ? x.Boardings.CompareTo(y.Boardings) : cmp;
 	}
 }
 
@@ -59,20 +53,26 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		var queue = new PriorityQueue<Node, SearchConnectionDuration>(new SearchConnectionDurationComparer());
 
 		var backTrack = new Node?[network.Nodes.Count];
-		var edges = new Edge?[network.Nodes.Count];
+		var edgesTrack = new Edge?[network.Nodes.Count];
 		var timeDistance = new int[network.Nodes.Count];
+		var boardings = new int[network.Nodes.Count];
+		var distance = new double[network.Nodes.Count];
+		
 		for (var i = 0; i < timeDistance.Length; i++)
 		{
 			timeDistance[i] = int.MaxValue;
+			boardings[i] = int.MaxValue;
 		}
 
 		foreach (var stop in from.Stops)
 		{
+			
 			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
 			if (node == null)
 				continue; // Stop doesn't have any nodes 
 			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
 			timeDistance[node.InternalId] = 0;
+			boardings[node.InternalId] = 0;
 		}
 
 		var destinationNodeId = -1;
@@ -82,9 +82,10 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			{
 				throw new UnreachableException();
 			}
-			
+
 			// logger.LogInformation("stop: {}, stop_time: {}, time: {}, priority: {}", node.Stop.StopId, node.Time, timeDistance[node.InternalId], priority.ToSeconds());
-			if (timeDistance[node.InternalId] != priority.ToSeconds())
+			if (timeDistance[node.InternalId] != priority.ToSeconds() &&
+			    boardings[node.InternalId] != priority.Boardings)
 			{
 				continue;
 			}
@@ -93,6 +94,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 
 			if (node.S != Node.State.OnBoard && to.Stops.Contains(node.Stop))
 			{
+				logger.LogInformation("Connection found with {} boardings", priority.Boardings);
 				destinationNodeId = node.InternalId;
 				break;
 			}
@@ -108,17 +110,29 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				}
 
 				var edgeTime = next.Time - node.Time;
-				var nextNodeTime = new SearchConnectionDuration(priority.Seconds + edgeTime, 0);
-				if (nextNodeTime.Seconds >= timeDistance[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
-					continue; // ignore if visited earlier
-				edges[internalId] = node.Edges[i];
+				var totalDistance = priority.TravelledDistance + node.Edges[i].Distance;
+				var nextNodePriority = new SearchConnectionDuration(priority.Seconds + edgeTime, 0, priority.Boardings, totalDistance);
+				if (node.S == Node.State.DepartingFromStop && next.S == Node.State.OnBoard)
+				{
+					// increment priority to minimize number of boardings
+					nextNodePriority.Boardings++;
+				}
+
+				if (((nextNodePriority.Seconds >= timeDistance[internalId] &&
+				      nextNodePriority.Boardings >= boardings[internalId]) ||
+				     nextNodePriority.Seconds > timeDistance[internalId]) || !node.Edges[i].OperatesOn(start.DayOfWeek))
+				{
+					continue;
+				}
+				
+				edgesTrack[internalId] = node.Edges[i];
 				backTrack[internalId] = node;
-				timeDistance[internalId] = nextNodeTime.ToSeconds();
-				queue.Enqueue(next, nextNodeTime);
-				//queue.Enqueue(next, new SearchConnectionDuration(next.Time, 0));
+				timeDistance[internalId] = nextNodePriority.ToSeconds();
+				boardings[internalId] = nextNodePriority.Boardings;
+				distance[internalId] = totalDistance;
+				queue.Enqueue(next, nextNodePriority);
 			}
 		}
-
 
 		var connectionNodes = new List<Node>();
 		var takenEdges = new List<Edge>();
@@ -128,7 +142,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		while (current != null)
 		{
 			connectionNodes.Add(current);
-			var e = edges[current.InternalId];
+			var e = edgesTrack[current.InternalId];
 			if (e != null)
 			{
 				takenEdges.Add(e);
@@ -139,21 +153,9 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 
 		takenEdges.Reverse();
 		connectionNodes.Reverse();
-		logger.LogInformation("Connection found");
+		logger.LogInformation("Connection found with distance: {}", distance[destinationNodeId]);
 
 		return (connectionNodes, takenEdges);
-	}
-
-	private class IndexToStopNodes(int index, List<Node> nodes)
-	{
-		public int Index = index;
-		public readonly List<Node> Nodes = nodes;
-
-		public void Deconstruct(out int idx, out List<Node> nodes)
-		{
-			idx = Index;
-			nodes = Nodes;
-		}
 	}
 
 	/// <summary>
@@ -211,7 +213,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 						}
 					}
 				}
-				
+
 				idx = 0;
 				day = day.NextDay();
 				++dayCompensation;
@@ -223,63 +225,8 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		}
 
 		return candidates.OrderBy(x => x.Item3).ThenBy(x => x.Item1.Time).Take(maxEntries).ToList();
-
-		// var candidates = new List<Edge>();
-		// var cmp = new EdgeDestinationTimeComparer();
-		// while (results.Count < maxEntries)
-		// {
-		// 	// No candidates => hit end
-		// 	var count = MinimalCandidates(stopNodes, candidates, cmp);
-		// 	logger.LogInformation("mincandidates: {}", count);
-		// 	if (count == 0)
-		// 	{
-		// 		break;
-		// 	}
-		//
-		// 	for (var i = 0; i < candidates.Count; i++)
-		// 	{
-		// 		if (results.Count >= maxEntries)
-		// 		{
-		// 			goto end;
-		// 		}
-		//
-		// 		results.Add(candidates[i]);
-		// 	}
-		//
-		// 	candidates.Clear();
-		// }
 	}
 
-
-	private static int MinimalCandidates(List<IndexToStopNodes> stopNodes, List<Edge> candidates, IComparer<Edge> cmp)
-	{
-		// TODO : change List<> to LinkedList<>
-		for (var i = 0; i < stopNodes.Count; i++)
-		{
-			var (idx, nodes) = stopNodes[i];
-			if (idx >= nodes.Count)
-			{
-				continue;
-			}
-
-			var edges = nodes[idx].Edges;
-			for (var j = 0; j < edges.Count; j++)
-			{
-				// Consider only departures from a stop
-				// TODO : trip cantakeedge
-				if (edges[j].Node.S == Node.State.OnBoard && nodes[idx].S == Node.State.DepartingFromStop)
-				{
-					candidates.Add(edges[j]);
-				}
-			}
-
-			++stopNodes[i].Index;
-		}
-
-		candidates.Sort(cmp);
-
-		return candidates.Count;
-	}
 
 	private Node? FirstStopNodeAfter(Stop stop, int time)
 	{

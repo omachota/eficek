@@ -46,7 +46,7 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 	/// Returns a set of departures from a StopGroup
 	/// </summary>
 	/// <param name="stopId"></param>
-	/// <returns>404 is returned if stopGroup doesn't exist</returns>
+	/// <returns>A set of DepartureResult. 404 is returned if stopGroup doesn't exist</returns>
 	[HttpGet("Departures")]
 	[ProducesResponseType(typeof(List<Node>), 200)]
 	[ProducesResponseType(typeof(string), 404)]
@@ -60,7 +60,6 @@ public class StopsController(NetworkService networkService, StopsService stopsSe
 		}
 
 		return Ok(routingService.StopGroupDepartures(stopGroup)
-		                        .Select(x => new DepartureResult
-			                        { TripName = x.Item2.Trip.TripId, Time = x.Item1.Time }));
+		                        .Select(x => new DepartureResult(x.Item2.Trip.TripId, x.Item1.Time)));
 	}
 }

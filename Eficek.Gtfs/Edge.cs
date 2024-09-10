@@ -1,13 +1,29 @@
 namespace Eficek.Gtfs;
 
-public class Edge(Node node, Trip trip)
+public class Edge(Node node, Trip trip, double distance, Edge.EdgeType type)
 {
 	public readonly Node Node = node;
 	public readonly Trip Trip = trip;
-	public readonly Service Service = trip.Service; 
+	public readonly Service? Service = trip.Service;
+	public readonly double Distance = distance;
+	public readonly EdgeType Type = type;
+
+	public enum EdgeType
+	{
+		GetOn,
+		GetOff,
+		ContinueOnBoard,
+		Waiting,
+		Walking
+	}
 
 	public bool OperatesOn(DayOfWeek day)
 	{
+		if (Service == null)
+		{
+			return false;
+		}
+
 		return day switch
 		{
 			DayOfWeek.Sunday => Service.Sunday,

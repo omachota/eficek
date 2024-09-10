@@ -104,10 +104,10 @@ public class NetworkBuilder(string path)
 				// previous not null, this is at least second stop, connect with previous and create get off edge.
 				if (previous != null)
 				{
-					previous.AddEdge(departure, trip); // Connect last dep (now last arr) with arr
+					previous.AddEdge(departure, trip, stopTimes[i].TravelledDistance - stopTimes[i-1].TravelledDistance, Edge.EdgeType.ContinueOnBoard); // Connect last dep (now last arr) with arr
 					var getOff = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
 						Node.State.ArrivedInStop);
-					departure.AddEdge(getOff, trip); // Get off the trip					
+					departure.AddEdge(getOff, trip, 0, Edge.EdgeType.GetOff); // Get off the trip					
 				}
 
 				if (i >= stopTimes.Count - 1)
@@ -116,7 +116,7 @@ public class NetworkBuilder(string path)
 				}
 
 				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.DepartingFromStop);
-				getOn.AddEdge(departure, trip); // Boarding
+				getOn.AddEdge(departure, trip, 0, Edge.EdgeType.GetOn); // Boarding
 
 				// connect the first boarding with following stop if previous == null, otherwise use departure
 				previous = departure;
@@ -232,7 +232,7 @@ public class NetworkBuilder(string path)
 		}
 	}
 
-	private struct PedestrianConnectionToStop(Stop stop, int duration)
+	private struct PedestrianConnectionToStop(Stop stop, int duration, double distanceApproximation)
 	{
 		/// <summary>
 		/// Connection destination
@@ -243,6 +243,11 @@ public class NetworkBuilder(string path)
 		/// Duration in seconds
 		/// </summary>
 		public readonly int Duration = duration;
+
+		/// <summary>
+		/// Approximated distance in meters
+		/// </summary>
+		public readonly double ApproximatedDistance = distanceApproximation;
 	}
 
 	private static List<PedestrianConnectionToStop> GetNearbyStopsWithWalkDuration(
@@ -251,7 +256,7 @@ public class NetworkBuilder(string path)
 		var utm = stop.UtmCoordinate;
 		var (eBox, nBox) = utm.GetUtmBox();
 
-		var nearby = new List<PedestrianConnectionToStop>();
+		var pedConnection = new List<PedestrianConnectionToStop>();
 
 		for (var i = 0; i < Constants.Neighbours.Length; i++)
 		{
@@ -269,12 +274,12 @@ public class NetworkBuilder(string path)
 				var distance = candidates[j].UtmCoordinate.Manhattan(utm);
 				if (distance <= Constants.MaxStopWalkDistance && candidates[j].StopId != stop.StopId)
 				{
-					nearby.Add(new PedestrianConnectionToStop(candidates[j], (int)(distance / Constants.WalkingSpeed)));
+					pedConnection.Add(new PedestrianConnectionToStop(candidates[j], (int)(distance / Constants.WalkingSpeed), distance));
 				}
 			}
 		}
 
-		return nearby;
+		return pedConnection;
 	}
 
 	private static readonly Trip _pedestrianConnection = new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"), Kind.Walking);
@@ -305,9 +310,7 @@ public class NetworkBuilder(string path)
 						continue;
 					}
 					
-					// Console.WriteLine($"Connecting {nodes[j].Stop.StopId} {nodes[j].Time} {nodes[j].S} with {dest.Stop.StopId} {dest.Time} {dest.S}");
-
-					nodes[j].AddEdge(dest, _pedestrianConnection);
+					nodes[j].AddEdge(dest, _pedestrianConnection, nearby[i].ApproximatedDistance, Edge.EdgeType.Walking);
 				}
 			}
 		}
@@ -346,7 +349,7 @@ public class NetworkBuilder(string path)
 			n.Sort(new TimeNodeComparer());
 			for (var i = 0; i < n.Count - 1; i++)
 			{
-				n[i].AddEdge(n[i + 1], _waiting);
+				n[i].AddEdge(n[i + 1], _waiting, 0, Edge.EdgeType.Waiting);
 				// nodes[n[i].InternalId].AddEdge(nodes[n[i + 1].InternalId], _waiting);
 			}
 		}
