@@ -1,3 +1,5 @@
+using Eficek.Database;
+using Eficek.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Eficek.Controllers;
@@ -8,13 +10,20 @@ namespace Eficek.Controllers;
 // This Controller should be hidden from ordinary users
 [ApiExplorerSettings(IgnoreApi = true)]
 #endif
-public class AdminController : ControllerBase
+public class AdminController(DatabaseUserService databaseUserService) : ControllerBase
 {
-	[HttpGet("Test")]
-	public void Test() {}
-
-	public IActionResult AddNetworkManager()
+	[HttpPost("Add")]
+	[ProducesResponseType(typeof(OkResult), 200)]
+	[ProducesResponseType(typeof(UnauthorizedResult), 401)]
+	public async Task<IActionResult> AddNetworkManager([FromBody] AddNetworkManager addNetworkManager)
 	{
-		throw new NotImplementedException();
+		if (!await databaseUserService.AuthenticateAdmin(addNetworkManager.Credentials))
+		{
+			return Unauthorized("Failed to authenticate administrator credentials");
+		}
+
+		await databaseUserService.AddNew(addNetworkManager.User);
+
+		return Ok();
 	}
 }

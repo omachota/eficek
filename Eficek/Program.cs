@@ -1,4 +1,5 @@
 using Eficek.Database;
+using Eficek.Database.Entities;
 using Eficek.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -45,8 +46,15 @@ await using (var scope = app.Services.CreateAsyncScope())
 		throw new NullReferenceException($"Failed to get {nameof(EficekDbContext)}");
 	}
 
-	await dbContext.Database.EnsureCreatedAsync();
+	var created = await dbContext.Database.EnsureCreatedAsync();
 	await dbContext.Database.MigrateAsync();
+	if (created)
+	{
+		var salt = PasswordHasher.Salt();
+		var hash = PasswordHasher.Hash("admin", salt);
+		await dbContext.Users.AddAsync(new UserInternal(UserInternal.Role.Admin, "admin", "", hash, salt));
+		await dbContext.SaveChangesAsync();
+	}
 }
 
 var gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");

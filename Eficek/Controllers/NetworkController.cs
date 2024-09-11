@@ -1,16 +1,9 @@
-using System.Security.Cryptography;
-using System.Text;
 using Eficek.Database;
+using Eficek.Database.Models;
 using Eficek.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Eficek.Controllers;
-
-public class Credentials
-{
-	public string Username { get; set; } = null!;
-	public string Password { get; set; } = null!;
-}
 
 [Route("Network")]
 [ApiController]
@@ -27,25 +20,14 @@ public class NetworkController(
 	[HttpPost("Update")]
 	[ProducesResponseType(typeof(OkResult), 200)]
 	[ProducesResponseType(typeof(UnauthorizedResult), 401)]
-	public async ValueTask<IActionResult> Update([FromBody] Credentials credentials)
+	public async ValueTask<IActionResult> Update([FromBody] LoginCredentials credentials)
 	{
-		var sb = new StringBuilder();
-		var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(credentials.Password));
-		for (var i = 0; i < bytes.Length; i++)
+		if (!await databaseUserService.Authenticate(credentials))
 		{
-			sb.Append(bytes[i].ToString("x2"));
+			return Unauthorized("Failed to authenticate user");
 		}
 
-		var hash = sb.ToString();
-		logger.LogInformation("{}", hash);
-		// admin:admin for now
-		if (credentials.Username != "admin" ||
-		    hash != "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918")
-		{
-			return Unauthorized();
-		}
-
-		logger.LogInformation("User {} logged in successfully and requested API update", credentials.Username);
+		logger.LogInformation("User {} logged in successfully and requested API update", credentials.UserName);
 		var gtfsCoreDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
 
 		// should we await this call?

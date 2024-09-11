@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Eficek.Database.Entities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Eficek.Database;
 
@@ -26,6 +27,8 @@ public class EficekDbContext(DbContextOptions<EficekDbContext> options) : DbCont
 			entity.Property(user => user.Salt).HasMaxLength(PasswordHasher.SaltByteLength).IsRequired();
 			entity.Property(user => user.UserName).HasMaxLength(64).IsRequired();
 			entity.Property(user => user.Email).HasMaxLength(128).IsRequired();
+			entity.Property(user => user.UserRole).HasConversion<EnumToNumberConverter<UserInternal.Role, int>>()
+			      .HasDefaultValue(UserInternal.Role.NetworkManager).IsRequired().ValueGeneratedNever();
 		});
 	}
 }

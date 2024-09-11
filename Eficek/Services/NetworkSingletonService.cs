@@ -25,7 +25,8 @@ public class NetworkSingletonService(ILogger<NetworkSingletonService> logger, IC
 	/// Downloads gtfs data and updates search graph. Only one update is allowed at a time.
 	/// </summary>
 	/// <param name="path">Global folder for gtfs data</param>
-	public async ValueTask Update(string path)
+	/// <param name="force">Force true downloads gtfs data from server</param>
+	public async ValueTask Update(string path, bool force = true)
 	{
 		if (!await _lock.WaitAsync(0))
 		{
@@ -35,9 +36,12 @@ public class NetworkSingletonService(ILogger<NetworkSingletonService> logger, IC
 
 		logger.LogInformation("API started to update");
 		IsBeingUpdated = true;
-		var pragueGtfs = new PragueGtfs(logger, configuration, path);
-		await pragueGtfs.Download();
-		
+		if (force)
+		{
+			var pragueGtfs = new PragueGtfs(logger, configuration, path);
+			await pragueGtfs.Download();
+		}
+
 		var networkBuilder = new NetworkBuilder(path);
 		var network = await networkBuilder.BuildAsync(logger);
 

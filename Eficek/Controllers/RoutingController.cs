@@ -181,7 +181,6 @@ public class RoutingController(
 				case Kind.Waiting:
 					// Should not happen
 					throw new UnreachableException();
-					break;
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
