@@ -11,24 +11,23 @@ public class StopTime(
 	double travelledDistance)
 	: IFromRow<StopTime>
 {
-	public string TripId = tripId;
-	public int ArrivalTime = arrivalTime;
-	public int DepartureTime = departureTime;
-	public string StopId = stopId;
+	public readonly string TripId = tripId;
+	public readonly int ArrivalTime = arrivalTime;
+	public readonly int DepartureTime = departureTime;
+	public readonly string StopId = stopId;
 	public int StopSequence = stopSequence;
-	public double TravelledDistance = travelledDistance;
+	public readonly double TravelledDistance = travelledDistance;
 
 
 	public static StopTime FromRow(SepReader.Row row)
 	{
-		var x = row["arrival_time"].ToString();
 		return new StopTime(
 			row["trip_id"].ToString(),
 			Seconds.Parse(row["arrival_time"].ToString()),
 			Seconds.Parse(row["departure_time"].ToString()),
 			row["stop_id"].ToString(),
 			row["stop_sequence"].Parse<int>(),
-			double.Parse(row["shape_dist_traveled"].ToString())
+			row["shape_dist_traveled"].Parse<double>() * 1000
 		);
 	}
 }

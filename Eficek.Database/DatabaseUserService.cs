@@ -11,14 +11,15 @@ public class DatabaseUserService(EficekDbContext context)
 	/// Add new Network Manager into the database
 	/// A programmer is responsible for authentication
 	/// </summary>
-	public async Task AddNew(User user)
+	public async Task<int> AddNew(User user)
 	{
 		var salt = PasswordHasher.Salt();
 		var hash = PasswordHasher.Hash(user.Password, salt);
 
-		await context.Users.AddAsync(new UserInternal(UserInternal.Role.NetworkManager, user.UserName, user.Email, hash,
+		var dbUser = await context.Users.AddAsync(new UserInternal(UserInternal.Role.NetworkManager, user.UserName, user.Email, hash,
 			salt));
 		await context.SaveChangesAsync();
+		return dbUser.Entity.Id;
 	}
 
 	/// <summary>

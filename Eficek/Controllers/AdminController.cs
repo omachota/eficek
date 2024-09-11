@@ -13,33 +13,27 @@ namespace Eficek.Controllers;
 #endif
 public class AdminController(DatabaseUserService databaseUserService) : ControllerBase
 {
-	private const string AdminAuthFailedMessage = "Failed to authenticate administrator";
+	private const string AdminAuthFailedMessage = "Failed to authenticate user";
 
 	/// <summary>
 	/// 
 	/// </summary>
-	/// <param name="addNetworkManager"></param>
+	/// <param name="addNetworkManager">AdminCredentials with new user details</param>
 	/// <returns></returns>
 	[HttpPost("Add")]
 	[ProducesResponseType(typeof(OkResult), 200)]
 	[ProducesResponseType(typeof(string), 401)]
 	public async Task<IActionResult> AddNetworkManager([FromBody] AddNetworkManager addNetworkManager)
 	{
-		if (!await databaseUserService.AuthenticateAdmin(addNetworkManager.Credentials))
-		{
-			return Unauthorized(AdminAuthFailedMessage);
-		}
-
-		await databaseUserService.AddNew(addNetworkManager.User);
-		return Ok();
+		return await GenericCall(databaseUserService.AuthenticateAdmin, databaseUserService.AddNew, addNetworkManager);
 	}
 
 	/// <summary>
 	/// 
 	/// </summary>
-	/// <param name="credentials"></param>
+	/// <param name="credentials">Admin credentials</param>
 	/// <returns></returns>
-	[HttpPost("GetAll")]
+	[HttpGet("GetAll")]
 	[ProducesResponseType(typeof(List<UserDetail>), 200)]
 	[ProducesResponseType(typeof(string), 401)]
 	public async Task<IActionResult> GetAll([FromBody] LoginCredentials credentials)
@@ -65,15 +59,21 @@ public class AdminController(DatabaseUserService databaseUserService) : Controll
 		return await GenericCall(databaseUserService.AuthenticateAdmin, databaseUserService.Update, updateUser);
 	}
 
-	 [HttpPost("UpdatePassword")]
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="updateUserPassword">Users password</param>
+	/// <returns></returns>
+	[HttpPost("UpdatePassword")]
 	public async Task<IActionResult> UpdatePassword(UpdateUserPassword updateUserPassword)
 	{
 		// Get userId from database, then authenticate
 		var userName = updateUserPassword.Credentials.UserName;
 		updateUserPassword.Value.Id = await databaseUserService.GetId(userName);
-		return await GenericCall(databaseUserService.Authenticate, databaseUserService.UpdatePassword, updateUserPassword);
+		return await GenericCall(databaseUserService.Authenticate, databaseUserService.UpdatePassword,
+			updateUserPassword);
 	}
-	
+
 	/// <summary>
 	/// Delete user by given id
 	/// </summary>
