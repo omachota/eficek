@@ -66,15 +66,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			distance[i] = int.MaxValue;
 		}
 
-		foreach (var stop in from.Stops)
-		{
-			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
-			if (node == null)
-				continue; // Stop doesn't have any nodes 
-			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
-			timeDistance[node.InternalId] = 0;
-			// boardings[node.InternalId] = 0;
-		}
+		MarkStartNodes(from, start, queue, timeDistance);
 
 		var destinationNodeId = -1;
 		while (queue.Count > 0)
@@ -162,13 +154,98 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 		return (connectionNodes, takenEdges);
 	}
 
+	// Destination, Duration
+	public List<(Node, int)> Coverage(StopGroup from, DateTime start, int duration)
+	{
+		var network = networkService.Network;
+		var queue = new PriorityQueue<Node, SearchConnectionDuration>(new SearchConnectionDurationComparer());
+		var end = start.Hour * 3600 + start.Minute * 60 + start.Second + duration;
+
+		var timeDistance = new int[network.Nodes.Count];
+		var distance = new double[network.Nodes.Count];
+
+		for (var i = 0; i < timeDistance.Length; i++)
+		{
+			timeDistance[i] = int.MaxValue;
+			distance[i] = int.MaxValue;
+		}
+
+		MarkStartNodes(from, start, queue, timeDistance);
+
+		var marked = new List<(Node, int)>();
+		while (queue.Count > 0)
+		{
+			if (!queue.TryDequeue(out var node, out var priority))
+			{
+				throw new UnreachableException();
+			}
+
+			// Drop suboptimal
+			if (timeDistance[node.InternalId] != priority.ToSeconds() &&
+			    distance[node.InternalId] < priority.TravelledDistance)
+			{
+				continue;
+			}
+
+			marked.Add((node, timeDistance[node.InternalId]));
+
+			for (var i = 0; i < node.Edges.Count; i++)
+			{
+				var edge = node.Edges[i];
+				var next = edge.Node;
+				var internalId = next.InternalId;
+				// over midnight
+				if (next.Time < node.Time || node.Time > end)
+				{
+					continue;
+				}
+
+				var edgeTime = next.Time - node.Time;
+				var totalDistance = priority.TravelledDistance + edge.Distance;
+				var nextNodePriority =
+					new SearchConnectionDuration(priority.Seconds + edgeTime, 0, priority.Boardings, totalDistance);
+				if (edge.Type == Edge.EdgeType.GetOn)
+				{
+					// increment priority to minimize number of boardings
+					nextNodePriority.Boardings++;
+				}
+
+				if ((nextNodePriority.Seconds >= timeDistance[internalId] &&
+				     nextNodePriority.TravelledDistance >= distance[internalId]) ||
+				    nextNodePriority.Seconds > timeDistance[internalId] || !node.Edges[i].OperatesOn(start.DayOfWeek))
+				{
+					continue;
+				}
+
+				timeDistance[internalId] = nextNodePriority.ToSeconds();
+				distance[internalId] = totalDistance;
+				queue.Enqueue(next, nextNodePriority);
+			}
+		}
+
+		return marked;
+	}
+
+	private void MarkStartNodes(StopGroup from, DateTime start, PriorityQueue<Node, SearchConnectionDuration> queue,
+	                            int[] timeDistance)
+	{
+		foreach (var stop in from.Stops)
+		{
+			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
+			if (node == null)
+				continue;
+			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
+			timeDistance[node.InternalId] = 0;
+		}
+	}
+
+
 	/// <summary>
 	/// Find all departures from stopGroup. The number of departures is limited by `maxEntries` and tomorrow 23:59:59.
 	/// </summary>
 	/// <param name="stopGroup"></param>
 	/// <param name="maxEntries"></param>
 	/// <returns>Returns sorted departures - from earliest to latest</returns>
-	/// <exception cref="NotImplementedException"></exception>
 	public List<(Node, Edge, int)> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
 	{
 		var now = DateTime.Now;
@@ -222,8 +299,8 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				++dayCompensation;
 			}
 
-			logger.LogInformation("idx: {}, nodes: {}, time: {}, stop: {}", idx, nodes.Count, secondsNow, stop.StopId);
-			logger.LogInformation("idx node time: {}", nodes[idx].Time);
+			// logger.LogInformation("idx: {}, nodes: {}, time: {}, stop: {}", idx, nodes.Count, secondsNow, stop.StopId);
+			// logger.LogInformation("idx node time: {}", nodes[idx].Time);
 		}
 
 		return candidates.OrderBy(x => x.Item3).ThenBy(x => x.Item1.Time).Take(maxEntries).ToList();

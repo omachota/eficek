@@ -23,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Eficek.Database\Eficek.Database.csproj" />
       <ProjectReference Include="..\Eficek.Gtfs\Eficek.Gtfs.csproj" />
     </ItemGroup>
 

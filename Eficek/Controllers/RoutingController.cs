@@ -216,8 +216,15 @@ public class RoutingController(
 		return Ok();
 	}
 
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="from">StopGroup id</param>
+	/// <param name="start">ISO 8601 date</param>
+	/// <param name="duration">Seconds</param>
+	/// <returns></returns>
 	[HttpGet("Coverage")]
-	public IActionResult Coverage(string from, DateTime start)
+	public IActionResult Coverage(string from, DateTime start, int duration)
 	{
 		var fs = stopsService.TryGet(from);
 
@@ -226,7 +233,20 @@ public class RoutingController(
 			return NotFound($"StopGroup {from} not found");
 		}
 
-		return Ok();
+		var coverage = routingService.Coverage(fs, start, duration);
+		var seenStops = new HashSet<string>();
+		var stopArrivals = new List<CoverageResult>();
+		
+		for (var i = 0; i < coverage.Count; i++)
+		{
+			var stopId = coverage[i].Item1.Stop.GroupName();
+			if (seenStops.Add(stopId))
+			{
+				stopArrivals.Add(CoverageResult.From(coverage[i]));
+			}
+		}
+		
+		return Ok(stopArrivals);
 	}
 }
 
