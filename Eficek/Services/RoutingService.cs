@@ -76,7 +76,6 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				throw new UnreachableException();
 			}
 
-			// logger.LogInformation("stop: {}, stop_time: {}, time: {}, priority: {}", node.Stop.StopId, node.Time, timeDistance[node.InternalId], priority.ToSeconds());
 			// if (timeDistance[node.InternalId] != priority.ToSeconds() &&
 			//     boardings[node.InternalId] != priority.Boardings)
 			if (timeDistance[node.InternalId] != priority.ToSeconds() &&
@@ -84,8 +83,6 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			{
 				continue;
 			}
-
-			// logger.LogInformation("Processing: {}, {}, {}", node.Stop.StopName, node.Time, node.S);
 
 			if (node.S != Node.State.OnBoard && to.Stops.Contains(node.Stop))
 			{
@@ -135,7 +132,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				queue.Enqueue(next, nextNodePriority);
 			}
 		}
-		
+
 		var connectionNodes = new List<Node>();
 		var takenEdges = new List<Edge>();
 		if (destinationNodeId == -1)
@@ -165,7 +162,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	{
 		var network = networkService.Network;
 		var queue = new PriorityQueue<Node, SearchConnectionDuration>(new SearchConnectionDurationComparer());
-		var end = start.Hour * 3600 + start.Minute * 60 + start.Second + duration;
+		var end = start.SearchTimeInformation().Item1 + duration;
 
 		var timeDistance = new int[network.Nodes.Count];
 		var distance = new double[network.Nodes.Count];
@@ -237,10 +234,9 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	{
 		foreach (var stop in from.Stops)
 		{
-			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
+			var node = FirstStopNodeAfter(stop, start.SearchTimeInformation().Item1);
 			if (node == null)
 				continue;
-			// logger.LogInformation("StartNode: {} {}", node.Stop.StopId, node.Time);
 			queue.Enqueue(node, new SearchConnectionDuration(node.Time, 0)); // priority will be travel time
 			timeDistance[node.InternalId] = node.Time;
 		}
@@ -255,10 +251,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	/// <returns>Returns sorted departures - from earliest to latest</returns>
 	public List<(Node, Edge, int)> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
 	{
-		var now = DateTime.Now;
-		now = new DateTime(now.Year, now.Month, now.Day, 14, 25, 0);
-		var secondsNow = now.Hour * 3600 + now.Minute * 60 + now.Second;
-		var day = now.DayOfWeek;
+		var (now, day) = DateTime.Now.SearchTimeInformation();
 
 		logger.LogInformation("stops: {}", stopGroup.Stops.Count);
 		// We need Node + Edge => Node for departure time and Edge for Trip, int for day compensation
@@ -271,7 +264,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				continue;
 			}
 
-			var idx = NodeSearch.IndexOfFirstAfter(nodes, secondsNow);
+			var idx = NodeSearch.IndexOfFirstAfter(nodes, now);
 			if (idx == -1 && nodes.Count > 0)
 			{
 				// TODO : increment day

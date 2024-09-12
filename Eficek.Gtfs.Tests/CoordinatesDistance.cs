@@ -3,18 +3,18 @@ namespace Eficek.Gtfs.Tests;
 public class CoordinatesDistance
 {
 	[Theory]
-	[InlineData(0, 0, 0, 0, 0)]
-	[InlineData(CoordinateExtension.LatitudeAxis * Math.PI / 2, 90, 0, 0, 0)]
-	[InlineData(CoordinateExtension.LongitudeAxis * Math.PI / 2, 0, 90, 0, 0)]
-	[InlineData((CoordinateExtension.LongitudeAxis + CoordinateExtension.LatitudeAxis) * Math.PI / 2, 90, 90, 0, 0)]
-	public void Test(double res, double lat1, double lon1, double lat2, double lon2)
+	[InlineData(0, 49, 16, 49, 16)]
+	[InlineData(1000, 1000, 0, 0, 0)]
+	[InlineData(1000, 0, 1000, 0, 0)]
+	[InlineData(1000, 0, 0, 1000, 0)]
+	[InlineData(1000, 0, 0, 0, 1000)]
+	[InlineData(1000, 0, 500, 500, 0)]
+	[InlineData(200, 400, 500, 300, 400)]
+	public void Test(double res, double e1, double n1, double e2, double n2)
 	{
-		var coord1 = new Coordinate(lat1, lon1);
-		var coord2 = new Coordinate(lat2, lon2);
+		var utm1 = new UtmCoordinate { Easting = e1, Northing = n1, ZoneNumber = 33 };
+		var utm2 = new UtmCoordinate { Easting = e2, Northing = n2, ZoneNumber = 33 };
 
-		var utm1 = coord1.ToUtm();
-		var utm2 = coord2.ToUtm();
-
-		utm1.Manhattan(utm2);
+		Assert.Equal(res, utm1.Manhattan(utm2));
 	}
 }

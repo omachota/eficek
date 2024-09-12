@@ -62,7 +62,7 @@ public class NetworkBuilder(string path)
 		throw new Exception($"File `{filePath}` does not contain data");
 	}
 
-	private static void FillTripsWithStopTimes(Dictionary<string, Trip> trips, IReadOnlyList<StopTime> stopTimes)
+	private static void FillTripsWithStopTimes(IDictionary<string, Trip> trips, IReadOnlyList<StopTime> stopTimes)
 	{
 		// stopTimes are also sorted according to trips 
 		Trip? lastTrip = null;
@@ -87,35 +87,38 @@ public class NetworkBuilder(string path)
 		return node;
 	}
 
-	private static List<Node> BuildStopTimesGraph(IDictionary<string, Trip> trips, IDictionary<string, Stop> stopLookup)
+	private static List<Node> BuildStopTimesGraph(List<Trip> trips, IDictionary<string, Stop> stopLookup)
 	{
 		var nodes = new List<Node>();
 		Node? previous = null;
-		foreach (var (_, trip) in trips)
+		for (var i = 0; i < trips.Count; i++)
 		{
+			var trip = trips[i];
 			var stopTimes = trip.StopTimes;
-			for (var i = 0; i < stopTimes.Count; i++)
+			for (var j = 0; j < stopTimes.Count; j++)
 			{
-				var stop = stopLookup[stopTimes[i].StopId];
+				var stop = stopLookup[stopTimes[j].StopId];
 				// TODO : ArrivalTime and DepartureTime differ
 
-				var departure = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.OnBoard);
+				var departure = BuildStopTimeNode(nodes, stop, stopTimes[j].DepartureTime, Node.State.OnBoard);
 				// TODO : Should we check SequenceId?
 				// previous not null, this is at least second stop, connect with previous and create get off edge.
 				if (previous != null)
 				{
-					previous.AddEdge(departure, trip, stopTimes[i].TravelledDistance - stopTimes[i-1].TravelledDistance, Edge.EdgeType.ContinueOnBoard); // Connect last dep (now last arr) with arr
-					var getOff = BuildStopTimeNode(nodes, stop, stopTimes[i].ArrivalTime + Constants.MinTransferTime,
+					previous.AddEdge(departure, trip,
+						stopTimes[j].TravelledDistance - stopTimes[j - 1].TravelledDistance,
+						Edge.EdgeType.ContinueOnBoard); // Connect last dep (now last arr) with arr
+					var getOff = BuildStopTimeNode(nodes, stop, stopTimes[j].ArrivalTime + Constants.MinTransferTime,
 						Node.State.ArrivedInStop);
 					departure.AddEdge(getOff, trip, 0, Edge.EdgeType.GetOff); // Get off the trip					
 				}
 
-				if (i >= stopTimes.Count - 1)
+				if (j >= stopTimes.Count - 1)
 				{
 					break; // This is last stopTime for a trip. No need to create dep node
 				}
 
-				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[i].DepartureTime, Node.State.DepartingFromStop);
+				var getOn = BuildStopTimeNode(nodes, stop, stopTimes[j].DepartureTime, Node.State.DepartingFromStop);
 				getOn.AddEdge(departure, trip, 0, Edge.EdgeType.GetOn); // Boarding
 
 				// connect the first boarding with following stop if previous == null, otherwise use departure
@@ -141,11 +144,7 @@ public class NetworkBuilder(string path)
 			var route = Route.FromRow(row);
 			return (route.RouteId, route);
 		}));
-		var tripsTask = Task.Run(() => ParseDict<Trip>(BuildRelativeFilePath("trips.txt"), row =>
-		{
-			var t = Trip.FromRow(row);
-			return (t.TripId, t);
-		}));
+		var tripsTask = Task.Run(() => Parse<Trip>(BuildRelativeFilePath("trips.txt")));
 		var stopTimesTask = Task.Run(() => Parse<StopTime>(BuildRelativeFilePath("stop_times.txt"), stopTime =>
 		{
 			// Trains contain non stop points
@@ -170,7 +169,8 @@ public class NetworkBuilder(string path)
 		UtmCoordinateBuilder.AssignUtmCoordinate(stopsTask.Result);
 		var stopGroups = GenerateStopGroups(stopsTask.Result);
 		ConnectServicesWithTrips(tripsTask.Result, calendarTask.Result);
-		FillTripsWithStopTimes(tripsTask.Result, stopTimesTask.Result);
+		var trips = tripsTask.Result.ToFrozenDictionary(trip => trip.TripId);
+		FillTripsWithStopTimes(trips, stopTimesTask.Result);
 		var stops = stopsTask.Result.ToFrozenDictionary(stop => stop.StopId);
 		var nodes = new ReadOnlyCollection<Node>(BuildStopTimesGraph(tripsTask.Result, stops));
 		var stopNodes = BuildAndConnectStopNodes(nodes);
@@ -184,7 +184,7 @@ public class NetworkBuilder(string path)
 			StopGroups = stopGroups.ToFrozenDictionary(),
 			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary(),
 			StopNodes = stopNodes.ToFrozenDictionary(),
-			Trips = tripsTask.Result.ToFrozenDictionary()
+			Trips = trips
 		};
 
 		stopwatch.Stop();
@@ -197,11 +197,11 @@ public class NetworkBuilder(string path)
 		return network;
 	}
 
-	private static void AssignRoutesToTrips(Dictionary<string, Route> routes, Dictionary<string,Trip> trips)
+	private static void AssignRoutesToTrips(Dictionary<string, Route> routes, List<Trip> trips)
 	{
-		foreach (var (_, trip) in trips)
+		for (var i = 0; i < trips.Count; i++)
 		{
-			trip.Route = routes[trip.RouteId];
+			trips[i].Route = routes[trips[i].RouteId];
 		}
 	}
 
@@ -225,11 +225,11 @@ public class NetworkBuilder(string path)
 		return dict;
 	}
 
-	private static void ConnectServicesWithTrips(IDictionary<string, Trip> trips, IDictionary<string, Service> services)
+	private static void ConnectServicesWithTrips(IList<Trip> trips, IDictionary<string, Service> services)
 	{
-		foreach (var (_, trip) in trips)
+		for (var i = 0; i < trips.Count; i++)
 		{
-			trip.Service = services[trip.ServiceId];
+			trips[i].Service = services[trips[i].ServiceId];
 		}
 	}
 
