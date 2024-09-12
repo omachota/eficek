@@ -105,6 +105,7 @@ public class NetworkBuilder(string path)
 				// previous not null, this is at least second stop, connect with previous and create get off edge.
 				if (previous != null)
 				{
+					Debug.Assert(stopTimes[j - 1].StopSequence < stopTimes[j].StopSequence);
 					previous.AddEdge(departure, trip,
 						stopTimes[j].TravelledDistance - stopTimes[j - 1].TravelledDistance,
 						Edge.EdgeType.ContinueOnBoard); // Connect last dep (now last arr) with arr
@@ -275,7 +276,8 @@ public class NetworkBuilder(string path)
 				var distance = candidates[j].UtmCoordinate.Manhattan(utm);
 				if (distance <= Constants.MaxStopWalkDistance && candidates[j].StopId != stop.StopId)
 				{
-					pedConnection.Add(new PedestrianConnectionToStop(candidates[j], (int)(distance / Constants.WalkingSpeed), distance));
+					pedConnection.Add(new PedestrianConnectionToStop(candidates[j],
+						(int)(distance / Constants.WalkingSpeed), distance));
 				}
 			}
 		}
@@ -283,9 +285,10 @@ public class NetworkBuilder(string path)
 		return pedConnection;
 	}
 
-	private static readonly Trip _pedestrianConnection = new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"), Kind.Walking);
+	private static readonly Trip _pedestrianConnection =
+		new("Chůze", "PED", "Pěšky", Service.AllDays("1111111-walk"), Kind.Walking);
 
-	private static void AddPedestrianEdges(IDictionary<Stop, List<Node>> stopNodes,
+	private static void AddPedestrianEdges(Dictionary<Stop, List<Node>> stopNodes,
 	                                       IDictionary<(int, int), List<Stop>> boxes)
 	{
 		foreach (var (stop, nodes) in stopNodes)
@@ -299,19 +302,21 @@ public class NetworkBuilder(string path)
 					{
 						continue;
 					}
+
 					if (!stopNodes.TryGetValue(nearby[i].Stop, out var destinationCandidates))
 					{
 						continue;
 					}
-					
+
 					var dest = NodeSearch.FirstAfter(destinationCandidates, nodes[j].Time + nearby[i].Duration);
 					if (dest == null)
 					{
 						// Should we ignore it?
 						continue;
 					}
-					
-					nodes[j].AddEdge(dest, _pedestrianConnection, nearby[i].ApproximatedDistance, Edge.EdgeType.Walking);
+
+					nodes[j].AddEdge(dest, _pedestrianConnection, nearby[i].ApproximatedDistance,
+						Edge.EdgeType.Walking);
 				}
 			}
 		}
@@ -322,7 +327,8 @@ public class NetworkBuilder(string path)
 		return Path.Combine(path, "Prague", fileName);
 	}
 
-	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"), Kind.Waiting);
+	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"),
+		Kind.Waiting);
 
 	private static Dictionary<Stop, List<Node>> BuildAndConnectStopNodes(IList<Node> nodes)
 	{
@@ -358,7 +364,7 @@ public class NetworkBuilder(string path)
 		return stopNodes;
 	}
 
-	public static Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
+	private static Dictionary<string, StopGroup> GenerateStopGroups(IReadOnlyList<Stop> stops)
 	{
 		var map = new Dictionary<string, StopGroup>();
 		for (var i = 0; i < stops.Count; i++)

@@ -4,5 +4,5 @@ namespace Eficek.Services;
 
 public class NetworkService(NetworkSingletonService networkSingletonService)
 {
-	public Network Network { get; } = networkSingletonService.Get();
+	public Network Network { get; } = networkSingletonService.Get()!;
 }

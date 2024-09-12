@@ -21,20 +21,20 @@ public class Stop(
 	public readonly string StopId = stopId;
 	public readonly string StopName = stopName;
 
-	public Coordinate Coordinate = coordinate;
+	public readonly Coordinate Coordinate = coordinate;
 	public UtmCoordinate UtmCoordinate;
 
 	// This has to be a string since `P`, `B`, `2,3` and so
-	public string ZoneId = zoneId;
-	public string StopUrl = stopUrl;
-	public LocationType LocationType = locationType;
-	public string ParentStation = parentStation;
-	public int WheelchairBoarding = wheelchairBoarding;
-	public string LevelId = levelId;
-	public string PlatformCode = platformCode;
-	public string AswNodeId = aswNodeId;
-	public string AswStopId = aswStopId;
-	public int? ZoneRegionType = zoneRegionType;
+	public readonly string ZoneId = zoneId;
+	public readonly string StopUrl = stopUrl;
+	public readonly LocationType LocationType = locationType;
+	public readonly string ParentStation = parentStation;
+	public readonly int WheelchairBoarding = wheelchairBoarding;
+	public readonly string LevelId = levelId;
+	public readonly string PlatformCode = platformCode;
+	public readonly string AswNodeId = aswNodeId;
+	public readonly string AswStopId = aswStopId;
+	public readonly int? ZoneRegionType = zoneRegionType;
 
 	public static Stop FromRow(SepReader.Row row)
 	{

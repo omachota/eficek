@@ -15,7 +15,7 @@ public class StopTime(
 	public readonly int ArrivalTime = arrivalTime;
 	public readonly int DepartureTime = departureTime;
 	public readonly string StopId = stopId;
-	public int StopSequence = stopSequence;
+	public readonly int StopSequence = stopSequence;
 	public readonly double TravelledDistance = travelledDistance;
 
 

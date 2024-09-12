@@ -34,8 +34,8 @@ public class Service(
 	public readonly bool Friday = friday;
 	public readonly bool Saturday = saturday;
 	public readonly bool Sunday = sunday;
-	public DateOnly StartDate = startDate;
-	public DateOnly EndDate = endDate;
+	public readonly DateOnly StartDate = startDate;
+	public readonly DateOnly EndDate = endDate;
 
 	public static Service FromRow(SepReader.Row row)
 	{

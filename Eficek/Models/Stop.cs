@@ -4,7 +4,7 @@ namespace Eficek.Models;
 
 public class Stop : IFrom<(DateTime, Gtfs.Stop), Stop>
 {
-	private int _time;
+	private readonly int _time;
 
 	public Stop(string id, string name, int time, Coordinate coordinate)
 	{

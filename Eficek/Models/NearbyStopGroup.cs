@@ -11,6 +11,6 @@ public class NearbyStopGroup(string name, string groupName, double distance) : I
 	{
 		var distance = from.Item1;
 		var stopGroup = from.Item2;
-		return new NearbyStopGroup(stopGroup.Name, stopGroup.GroupName, distance);
+		return new NearbyStopGroup(stopGroup.Name, stopGroup.GroupId, distance);
 	}
 }

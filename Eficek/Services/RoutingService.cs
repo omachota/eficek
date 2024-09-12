@@ -42,6 +42,22 @@ public class SearchConnectionDurationComparer : IComparer<SearchConnectionDurati
 public class RoutingService(NetworkService networkService, ILogger<RoutingService> logger)
 {
 	/// <summary>
+	/// Search connection from a stop `from` to a stopGroup `to`. Primary usage is for
+	/// search with via stop.
+	/// </summary>
+	/// <param name="from">Valid stop</param>
+	/// <param name="to">Valid stopGroup</param>
+	/// <param name="start">From when it should search</param>
+	public (List<Node>, List<Edge>) Search(Stop from, StopGroup to, DateTime start)
+	{
+		var stopGroup = new StopGroup(from.StopId);
+		stopGroup.AddStop(from);
+		stopGroup.Freeze();
+
+		return Search(stopGroup, to, start);
+	}
+
+	/// <summary>
 	/// 
 	/// </summary>
 	/// <param name="from">Valid StopGroup</param>
@@ -241,7 +257,6 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			timeDistance[node.InternalId] = node.Time;
 		}
 	}
-
 
 	/// <summary>
 	/// Find all departures from stopGroup. The number of departures is limited by `maxEntries` and tomorrow 23:59:59.

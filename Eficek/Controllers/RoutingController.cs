@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Eficek.Gtfs;
+using Eficek.Infrastructure;
 using Eficek.Models;
 using Eficek.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,8 +13,7 @@ namespace Eficek.Controllers;
 [ApiController]
 public class RoutingController(
 	StopsService stopsService,
-	RoutingService routingService,
-	ILogger<RoutingController> logger) : ControllerBase
+	RoutingService routingService) : ControllerBase
 {
 	/// <summary>
 	/// Returns connection between `from` StopGroup and `to` StopGroup
@@ -40,6 +40,8 @@ public class RoutingController(
 			return NotFound($"StopGroup {to} not found");
 		}
 
+		var useDelay = start.Date == DateTime.Today.Date;
+
 		/*
 		 * IDEA: Start search ~10 times. Stop if next departure is a day later than `start`.
 		 * This may be resources consuming. Simultaneous searching might help. And a faster algorithm.
@@ -57,7 +59,6 @@ public class RoutingController(
 		var trips = new List<Trip>();
 		var endTime = 0;
 		var startTime = nodes[0].Time;
-		// TODO : make sure that this stop exists
 		stops.Add(
 			new Stop(nodes[0].Stop.StopId, nodes[0].Stop.StopName, nodes[0].Time, nodes[0].Stop.Coordinate));
 		/*
@@ -85,9 +86,7 @@ public class RoutingController(
 					else if (i < edges.Count - 2)
 					{
 						endTime = edgeDestination.Time;
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
-							stops);
-						trips.Add(trip);
+						trips.Add(Trip.From((edge.Trip, edge, stops, useDelay)));
 						stops =
 						[
 							new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
@@ -99,9 +98,7 @@ public class RoutingController(
 						endTime = edgeDestination.Time;
 						stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 							edgeDestination.Time, edgeDestination.Stop.Coordinate));
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
-							stops);
-						trips.Add(trip);
+						trips.Add(Trip.From((edge.Trip, edge, stops, useDelay)));
 						stops = [];
 					}
 
@@ -121,9 +118,7 @@ public class RoutingController(
 						endTime = edgeDestination.Time;
 						stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 							edgeDestination.Time, edgeDestination.Stop.Coordinate));
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
-							stops);
-						trips.Add(trip);
+						trips.Add(Trip.From((edge.Trip, edge, stops, useDelay)));
 						stops = [];
 					}
 
@@ -146,8 +141,7 @@ public class RoutingController(
 					endTime = edgeDestination.Time;
 					stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 						edgeDestination.Time, edgeDestination.Stop.Coordinate));
-					var tr = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay, stops);
-					trips.Add(tr);
+					trips.Add(Trip.From((edge.Trip, edge, stops, useDelay)));
 					if (nextEdge.Trip.Kind == Kind.Walking)
 					{
 						stops =
@@ -178,8 +172,7 @@ public class RoutingController(
 					endTime = edgeDestination.Time;
 					stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 						edgeDestination.Time, edgeDestination.Stop.Coordinate));
-					var trip = new Trip(last.Trip.TripId, last.Trip.Name(), last.Direction(), last.Trip.Delay, stops);
-					trips.Add(trip);
+					trips.Add(Trip.From((last.Trip, last, stops, useDelay)));
 					break;
 				case Kind.Waiting:
 					// Should not happen
@@ -197,35 +190,49 @@ public class RoutingController(
 	[HttpGet("SearchVia")]
 	public IActionResult SearchVia(string from, string via, string to, DateTime start)
 	{
-		var fs = stopsService.TryGet(from);
-		var vs = stopsService.TryGet(via);
-		var ts = stopsService.TryGet(to);
+		var fromStopGroup = stopsService.TryGet(from);
+		var viaStopGroup = stopsService.TryGet(via);
+		var toStopGroup = stopsService.TryGet(to);
 
-		if (fs == null)
+		if (fromStopGroup == null)
 		{
 			return NotFound($"StopGroup {from} not found");
 		}
 
-		if (vs == null)
+		if (viaStopGroup == null)
+		{
+			return NotFound($"StopGroup {via} not found");
+		}
+
+		if (toStopGroup == null)
 		{
 			return NotFound($"StopGroup {to} not found");
 		}
 
-		if (ts == null)
+		if (fromStopGroup.GroupId == viaStopGroup.GroupId || viaStopGroup.GroupId == toStopGroup.GroupId)
 		{
-			return NotFound($"StopGroup {to} not found");
+			return Search(fromStopGroup.GroupId, toStopGroup.GroupId, start);
 		}
+
+		var (viaNodes, viaEdges) = routingService.Search(fromStopGroup, viaStopGroup, start);
+		if (viaEdges.Count < 1)
+		{
+			return NotFound("No connection found");
+		}
+
+		var viaNode = viaEdges[^1].Node;
+		var timeDiff = viaNode.Time - start.SearchTimeInformation().Item1;
+		var toResult = routingService.Search(viaNode.Stop, toStopGroup, start.AddSeconds(timeDiff));
 
 		return Ok();
 	}
 
 	/// <summary>
-	/// 
+	/// Finds all StopGroups that are reachable from `from` StopGroup
 	/// </summary>
 	/// <param name="from">StopGroup id</param>
 	/// <param name="start">ISO 8601 date</param>
 	/// <param name="duration">Seconds</param>
-	/// <returns></returns>
 	[HttpGet("Coverage")]
 	public IActionResult Coverage(string from, DateTime start, int duration)
 	{
@@ -250,29 +257,5 @@ public class RoutingController(
 		}
 
 		return Ok(stopArrivals);
-	}
-}
-
-public static class GtsfInfoExtension
-{
-	public static string Name(this Gtfs.Trip trip)
-	{
-		if (trip.Route != null)
-		{
-			return trip.Route.RouteShortName;
-		}
-
-		return trip.Kind == Kind.Walking ? "walking" : "waiting";
-	}
-
-	public static string Direction(this Edge edge)
-	{
-		var trip = edge.Trip;
-		if (trip.Kind == Kind.Connection)
-		{
-			return trip.TripHeadSign;
-		}
-
-		return trip.Kind == Kind.Walking ? edge.Node.Stop.StopName : "";
 	}
 }

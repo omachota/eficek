@@ -58,6 +58,7 @@ public class DelayService(NetworkSingletonService ns, ILogger<DelayService> logg
 			for (var i = 0; i < delays.Features.Length; i++)
 			{
 				var tripDelay = delays.Features[i].TripDelay;
+				// Be careful here!
 				network.Trips[tripDelay.TripId].Delay = tripDelay.Delay;
 			}
 

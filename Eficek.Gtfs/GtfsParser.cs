@@ -14,7 +14,7 @@ public class GtfsParser(GtfsDescription description, ILogger logger)
 {
 	protected readonly ILogger _logger = logger;
 
-	public List<T> Parse<T>(string filePath) where T : IFromRow<T>
+	private List<T> Parse<T>(string filePath) where T : IFromRow<T>
 	{
 		var path = Path.Combine(description.FullGtfsDirectory, filePath);
 		using var reader = Sep.New(',').Reader().FromFile(path);

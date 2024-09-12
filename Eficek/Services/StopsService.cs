@@ -52,7 +52,7 @@ public class StopsService(NetworkService networkService)
 			var match = r.Match(stopGroup.Name);
 			if (match.Success && (matches.Count < maxResults || maxResults == -1))
 			{
-				matches.Add(new StopGroupMatch(stopGroup.Name, stopGroup.GroupName));
+				matches.Add(new StopGroupMatch(stopGroup.Name, stopGroup.GroupId));
 			}
 		}
 

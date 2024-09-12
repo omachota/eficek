@@ -6,12 +6,14 @@ namespace Eficek.Gtfs;
 /// <summary>
 /// Contains all stops with the same group name.
 /// </summary>
-public class StopGroup(string groupName)
+public class StopGroup(string groupId)
 {
 	private bool _frozen;
+
 	private Coordinate _coordinate;
+
 	// ZoneNumber has to be set not to raise exception
-	private UtmCoordinate _utmCoordinate = new() {ZoneNumber = 33};
+	private UtmCoordinate _utmCoordinate = new() { ZoneNumber = 33 };
 
 	public readonly HashSet<Stop> Stops = [];
 
@@ -44,7 +46,7 @@ public class StopGroup(string groupName)
 	}
 
 	public string Name { get; private set; }
-	public string GroupName { get; } = groupName;
+	public string GroupId { get; } = groupId;
 
 	public bool AddStop(Stop stop)
 	{
