@@ -35,7 +35,7 @@ public class SearchConnectionDurationComparer : IComparer<SearchConnectionDurati
 	{
 		var cmp = x.ToSeconds().CompareTo(y.ToSeconds());
 
-		return cmp == 0 ? x.Boardings.CompareTo(y.Boardings) : cmp;
+		return cmp == 0 ? x.TravelledDistance.CompareTo(y.TravelledDistance) : cmp;
 	}
 }
 
@@ -98,6 +98,12 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			{
 				var next = node.Edges[i].Node;
 				var internalId = next.InternalId;
+				// if (node.Edges[i].Trip.TripId.StartsWith("375"))
+				// {
+				// 	logger.LogInformation("trying: {}, {} {} {} {}", node.Edges[i].Trip.TripId, node.Stop.StopId,
+				// 		node.Time, next.Stop.StopId, next.Time);
+				// }
+
 				// over midnight
 				if (next.Time < node.Time)
 				{
@@ -129,7 +135,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 				queue.Enqueue(next, nextNodePriority);
 			}
 		}
-
+		
 		var connectionNodes = new List<Node>();
 		var takenEdges = new List<Edge>();
 		if (destinationNodeId == -1)
@@ -234,8 +240,9 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 			var node = FirstStopNodeAfter(stop, start.Hour * 60 * 60 + start.Minute * 60 + start.Second);
 			if (node == null)
 				continue;
-			queue.Enqueue(node, new SearchConnectionDuration(0, 0)); // priority will be travel time
-			timeDistance[node.InternalId] = 0;
+			// logger.LogInformation("StartNode: {} {}", node.Stop.StopId, node.Time);
+			queue.Enqueue(node, new SearchConnectionDuration(node.Time, 0)); // priority will be travel time
+			timeDistance[node.InternalId] = node.Time;
 		}
 	}
 
@@ -249,6 +256,7 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	public List<(Node, Edge, int)> StopGroupDepartures(StopGroup stopGroup, int maxEntries = 100)
 	{
 		var now = DateTime.Now;
+		now = new DateTime(now.Year, now.Month, now.Day, 14, 25, 0);
 		var secondsNow = now.Hour * 3600 + now.Minute * 60 + now.Second;
 		var day = now.DayOfWeek;
 

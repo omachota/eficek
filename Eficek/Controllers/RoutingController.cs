@@ -85,7 +85,8 @@ public class RoutingController(
 					else if (i < edges.Count - 2)
 					{
 						endTime = edgeDestination.Time;
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), stops);
+						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
+							stops);
 						trips.Add(trip);
 						stops =
 						[
@@ -98,7 +99,8 @@ public class RoutingController(
 						endTime = edgeDestination.Time;
 						stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 							edgeDestination.Time, edgeDestination.Stop.Coordinate));
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), stops);
+						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
+							stops);
 						trips.Add(trip);
 						stops = [];
 					}
@@ -119,7 +121,8 @@ public class RoutingController(
 						endTime = edgeDestination.Time;
 						stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 							edgeDestination.Time, edgeDestination.Stop.Coordinate));
-						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), stops);
+						var trip = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay,
+							stops);
 						trips.Add(trip);
 						stops = [];
 					}
@@ -143,7 +146,7 @@ public class RoutingController(
 					endTime = edgeDestination.Time;
 					stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 						edgeDestination.Time, edgeDestination.Stop.Coordinate));
-					var tr = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), stops);
+					var tr = new Trip(edge.Trip.TripId, edge.Trip.Name(), edge.Direction(), edge.Trip.Delay, stops);
 					trips.Add(tr);
 					if (nextEdge.Trip.Kind == Kind.Walking)
 					{
@@ -175,7 +178,7 @@ public class RoutingController(
 					endTime = edgeDestination.Time;
 					stops.Add(new Stop(edgeDestination.Stop.StopId, edgeDestination.Stop.StopName,
 						edgeDestination.Time, edgeDestination.Stop.Coordinate));
-					var trip = new Trip(last.Trip.TripId, last.Trip.Name(), last.Direction(), stops);
+					var trip = new Trip(last.Trip.TripId, last.Trip.Name(), last.Direction(), last.Trip.Delay, stops);
 					trips.Add(trip);
 					break;
 				case Kind.Waiting:
@@ -236,7 +239,7 @@ public class RoutingController(
 		var coverage = routingService.Coverage(fs, start, duration);
 		var seenStops = new HashSet<string>();
 		var stopArrivals = new List<CoverageResult>();
-		
+
 		for (var i = 0; i < coverage.Count; i++)
 		{
 			var stopId = coverage[i].Item1.Stop.GroupName();
@@ -245,7 +248,7 @@ public class RoutingController(
 				stopArrivals.Add(CoverageResult.From(coverage[i]));
 			}
 		}
-		
+
 		return Ok(stopArrivals);
 	}
 }
