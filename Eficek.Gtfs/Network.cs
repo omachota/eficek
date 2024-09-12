@@ -12,4 +12,5 @@ public class Network
 	public FrozenDictionary<(int, int), List<StopGroup>> NearbyStopGroups;
 	public ReadOnlyCollection<Node> Nodes;
 	public FrozenDictionary<Stop, List<Node>> StopNodes;
+	public FrozenDictionary<string, Trip> Trips;
 }

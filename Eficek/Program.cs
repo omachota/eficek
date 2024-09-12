@@ -1,5 +1,6 @@
 using Eficek.Database;
 using Eficek.Database.Entities;
+using Eficek.Realtime;
 using Eficek.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -11,6 +12,7 @@ builder.Services.AddScoped<NetworkService>();
 builder.Services.AddScoped<StopsService>();
 builder.Services.AddScoped<RoutingService>();
 builder.Services.AddTransient<DatabaseUserService>();
+builder.Services.AddHostedService<DelayService>();
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<EficekDbContext>(options => options.UseSqlite());

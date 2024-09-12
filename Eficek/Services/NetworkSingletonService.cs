@@ -5,12 +5,12 @@ namespace Eficek.Services;
 public class NetworkSingletonService(ILogger<NetworkSingletonService> logger, IConfiguration configuration)
 {
 	private readonly SemaphoreSlim _lock = new(1);
-	private Network _network = null!;
+	private Network? _network;
 
 	/// <summary>
 	/// Returns current search graph
 	/// </summary>
-	public Network Get()
+	public Network? Get()
 	{
 		return _network;
 	}

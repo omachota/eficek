@@ -18,7 +18,6 @@
     <ItemGroup>
         <ProjectReference Include="..\Eficek.Database\Eficek.Database.csproj" />
         <ProjectReference Include="..\Eficek.Gtfs\Eficek.Gtfs.csproj"/>
-        <ProjectReference Include="..\Eficek.Realtime\Eficek.Realtime.csproj" />
     </ItemGroup>
 
 </Project>

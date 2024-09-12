@@ -18,6 +18,7 @@ public class Trip(string routeId, string serviceId, string tripId, string tripHe
 	public readonly Kind Kind = kind;
 	public Service? Service;
 	public Route? Route;
+	public int? Delay;
 
 
 	public readonly List<StopTime> StopTimes = [];

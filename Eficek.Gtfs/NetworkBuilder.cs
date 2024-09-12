@@ -183,7 +183,8 @@ public class NetworkBuilder(string path)
 			Stops = stops,
 			StopGroups = stopGroups.ToFrozenDictionary(),
 			NearbyStopGroups = AssignStopGroupsToSquares(stopGroups).ToFrozenDictionary(),
-			StopNodes = stopNodes.ToFrozenDictionary()
+			StopNodes = stopNodes.ToFrozenDictionary(),
+			Trips = tripsTask.Result.ToFrozenDictionary()
 		};
 
 		stopwatch.Stop();

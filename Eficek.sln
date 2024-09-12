@@ -6,8 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek", "Eficek\Eficek.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek.Gtfs.Tests", "Eficek.Gtfs.Tests\Eficek.Gtfs.Tests.csproj", "{B745C74A-E342-4452-A9D3-0EAD8F1268D2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek.Realtime", "Eficek.Realtime\Eficek.Realtime.csproj", "{974C541B-396E-4E1C-AFF0-57A73A0593C2}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eficek.Database", "Eficek.Database\Eficek.Database.csproj", "{92C4B148-5531-4509-9A6A-CD39BBDC105A}"
 EndProject
 Global
@@ -28,10 +26,6 @@ Global
 		{B745C74A-E342-4452-A9D3-0EAD8F1268D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B745C74A-E342-4452-A9D3-0EAD8F1268D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B745C74A-E342-4452-A9D3-0EAD8F1268D2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{974C541B-396E-4E1C-AFF0-57A73A0593C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{974C541B-396E-4E1C-AFF0-57A73A0593C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{974C541B-396E-4E1C-AFF0-57A73A0593C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{974C541B-396E-4E1C-AFF0-57A73A0593C2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{92C4B148-5531-4509-9A6A-CD39BBDC105A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{92C4B148-5531-4509-9A6A-CD39BBDC105A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92C4B148-5531-4509-9A6A-CD39BBDC105A}.Release|Any CPU.ActiveCfg = Release|Any CPU

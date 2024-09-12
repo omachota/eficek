@@ -18,8 +18,8 @@ public static class PasswordHasher
 		{
 			ms.Write(password, 0, password.Length);
 			ms.Write(salt, 0, salt.Length);
-			// There is a problem with call without ms.GetBuffer()
-			return SHA256.HashData(ms.GetBuffer());
+			ms.Seek(0, SeekOrigin.Begin);
+			return SHA256.HashData(ms);
 		}
 	}
 
