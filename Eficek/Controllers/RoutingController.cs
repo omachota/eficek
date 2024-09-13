@@ -43,7 +43,7 @@ public class RoutingController(
 		var useDelay = start.Date == DateTime.Today.Date;
 
 		/*
-		 * IDEA: Start search ~10 times. Stop if next departure is a day later than `start`.
+		 * IDEA: Start search ~5 times. Stop if next departure is a day later than `start`.
 		 * This may be resources consuming. Simultaneous searching might help. And a faster algorithm.
 		 */
 
@@ -185,6 +185,11 @@ public class RoutingController(
 		var connection = new Connection(endTime - startTime, trips);
 
 		return Ok(connection);
+	}
+
+	private Connection Construct()
+	{
+		throw new NotImplementedException();
 	}
 
 	[HttpGet("SearchVia")]

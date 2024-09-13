@@ -29,10 +29,9 @@ public class AdminController(DatabaseUserService databaseUserService) : Controll
 	}
 
 	/// <summary>
-	/// 
+	/// Return all user from the database, salts and hashes are omitted
 	/// </summary>
 	/// <param name="credentials">Admin credentials</param>
-	/// <returns></returns>
 	[HttpGet("GetAll")]
 	[ProducesResponseType(typeof(List<UserDetail>), 200)]
 	[ProducesResponseType(typeof(string), 401)]
@@ -60,10 +59,10 @@ public class AdminController(DatabaseUserService databaseUserService) : Controll
 	}
 
 	/// <summary>
-	/// 
+	/// Updates password for a user if the given credentials are valid
 	/// </summary>
-	/// <param name="updateUserPassword">Users password</param>
-	/// <returns></returns>
+	/// <param name="updateUserPassword">Users credentials and a new password</param>
+	/// <returns>True if the password was updated</returns>
 	[HttpPost("UpdatePassword")]
 	public async Task<IActionResult> UpdatePassword(UpdateUserPassword updateUserPassword)
 	{

@@ -58,12 +58,12 @@ public class RoutingService(NetworkService networkService, ILogger<RoutingServic
 	}
 
 	/// <summary>
-	/// 
+	/// Search connection between two stopGroups
 	/// </summary>
 	/// <param name="from">Valid StopGroup</param>
-	/// <param name="to"></param>
-	/// <param name="start"></param>
-	/// <returns></returns>
+	/// <param name="to">Valid StopGroup</param>
+	/// <param name="start">Datetime of departure</param>
+	/// <returns>Nodes and edges that are present on the shorted path</returns>
 	public (List<Node>, List<Edge>) Search(StopGroup from, StopGroup to, DateTime start)
 	{
 		var network = networkService.Network;

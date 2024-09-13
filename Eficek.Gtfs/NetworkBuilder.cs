@@ -101,7 +101,6 @@ public class NetworkBuilder(string path)
 				// TODO : ArrivalTime and DepartureTime differ
 
 				var departure = BuildStopTimeNode(nodes, stop, stopTimes[j].DepartureTime, Node.State.OnBoard);
-				// TODO : Should we check SequenceId?
 				// previous not null, this is at least second stop, connect with previous and create get off edge.
 				if (previous != null)
 				{
