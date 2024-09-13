@@ -58,8 +58,7 @@ public class NetworkBuilder(string path)
 			return T.FromRow(reader.Current);
 		}
 
-		// TODO : better exception
-		throw new Exception($"File `{filePath}` does not contain data");
+		throw new ParseException($"File `{filePath}` does not contain data");
 	}
 
 	private static void FillTripsWithStopTimes(IDictionary<string, Trip> trips, IReadOnlyList<StopTime> stopTimes)
@@ -326,7 +325,7 @@ public class NetworkBuilder(string path)
 		return Path.Combine(path, "Prague", fileName);
 	}
 
-	private static readonly Trip _waiting = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"),
+	public static readonly Trip WaitingTrip = new("0", "waiting", "Čekačka", Service.AllDays("1111111-wait"),
 		Kind.Waiting);
 
 	private static Dictionary<Stop, List<Node>> BuildAndConnectStopNodes(IList<Node> nodes)
@@ -355,7 +354,7 @@ public class NetworkBuilder(string path)
 			n.Sort(new TimeNodeComparer());
 			for (var i = 0; i < n.Count - 1; i++)
 			{
-				n[i].AddEdge(n[i + 1], _waiting, 0, Edge.EdgeType.Waiting);
+				n[i].AddEdge(n[i + 1], WaitingTrip, 0, Edge.EdgeType.Waiting);
 				// nodes[n[i].InternalId].AddEdge(nodes[n[i + 1].InternalId], _waiting);
 			}
 		}

@@ -40,8 +40,6 @@ public class RoutingController(
 			return NotFound($"StopGroup {to} not found");
 		}
 
-		var useDelay = start.Date == DateTime.Today.Date;
-
 		/*
 		 * IDEA: Start search ~5 times. Stop if next departure is a day later than `start`.
 		 * This may be resources consuming. Simultaneous searching might help. And a faster algorithm.
@@ -55,6 +53,13 @@ public class RoutingController(
 			return NotFound("No connection found");
 		}
 
+		var connection = Construct(nodes, edges, start.Date == DateTime.Today.Date);
+
+		return Ok(connection);
+	}
+
+	private static Connection Construct(List<Node> nodes, List<Edge> edges, bool useDelay)
+	{
 		var stops = new List<Stop>();
 		var trips = new List<Trip>();
 		var endTime = 0;
@@ -183,13 +188,7 @@ public class RoutingController(
 		}
 
 		var connection = new Connection(endTime - startTime, trips);
-
-		return Ok(connection);
-	}
-
-	private Connection Construct()
-	{
-		throw new NotImplementedException();
+		return connection;
 	}
 
 	[HttpGet("SearchVia")]
@@ -227,9 +226,17 @@ public class RoutingController(
 
 		var viaNode = viaEdges[^1].Node;
 		var timeDiff = viaNode.Time - start.SearchTimeInformation().Item1;
-		var toResult = routingService.Search(viaNode.Stop, toStopGroup, start.AddSeconds(timeDiff));
+		var (toNodes, toEdges) = routingService.Search(viaNode.Stop, toStopGroup, start.AddSeconds(timeDiff));
+		if (viaEdges.Count < 1)
+		{
+			return NotFound("No connection found");
+		}
 
-		return Ok();
+		viaNodes.AddRange(toNodes);
+		viaEdges.Add(new Edge(toNodes[0], NetworkBuilder.WaitingTrip, 0, Edge.EdgeType.Waiting));
+		viaEdges.AddRange(toEdges);
+
+		return Ok(Construct(viaNodes, viaEdges, start.Date == DateTime.Today.Date));
 	}
 
 	/// <summary>
