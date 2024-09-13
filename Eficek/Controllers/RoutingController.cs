@@ -247,12 +247,14 @@ public class RoutingController(
 		var seenStops = new HashSet<string>();
 		var stopArrivals = new List<CoverageResult>();
 
+		var startTime = start.SearchTimeInformation().Item1;
 		for (var i = 0; i < coverage.Count; i++)
 		{
 			var stopId = coverage[i].Item1.Stop.GroupName();
 			if (seenStops.Add(stopId))
 			{
-				stopArrivals.Add(CoverageResult.From(coverage[i]));
+				var (node, durationToNode) = coverage[i];
+				stopArrivals.Add(CoverageResult.From((node, durationToNode - startTime)));
 			}
 		}
 
